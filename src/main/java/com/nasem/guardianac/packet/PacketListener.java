@@ -13,17 +13,17 @@ import org.bukkit.entity.Player;
 
 public class PacketListener {
 
-    private final GuardianAC plugin;
+    private final GuardianAC pluginInstance;
     private final ProtocolManager protocolManager;
     private PacketAdapter adapter;
 
     public PacketListener(GuardianAC plugin) {
-        this.plugin = plugin;
+        this.pluginInstance = plugin;
         this.protocolManager = plugin.getProtocolManager();
     }
 
     public void register() {
-        adapter = new PacketAdapter(plugin, ListenerPriority.HIGH,
+        adapter = new PacketAdapter(pluginInstance, ListenerPriority.HIGH,
                 PacketType.Play.Client.POSITION,
                 PacketType.Play.Client.POSITION_LOOK,
                 PacketType.Play.Client.LOOK,
@@ -35,20 +35,18 @@ public class PacketListener {
                 Player player = event.getPlayer();
                 if (player == null) return;
 
-                PlayerData data = plugin.getPlayerDataManager().get(player);
+                PlayerData data = pluginInstance.getPlayerDataManager().get(player);
                 if (data == null) return;
 
                 PacketType type = event.getPacketType();
 
                 if (type == PacketType.Play.Client.POSITION
                         || type == PacketType.Play.Client.POSITION_LOOK) {
-                    // Player sent position packet
-                    runPacketCheck(CheckType.SPEED, player, data, event);
-                    runPacketCheck(CheckType.FLIGHT, player, data, event);
+                    runPacketCheck(CheckType.SPEED, player, data);
+                    runPacketCheck(CheckType.FLIGHT, player, data);
                 } else if (type == PacketType.Play.Client.ARM_ANIMATION) {
-                    // Player swung arm (attack)
                     data.incrementClicks();
-                    runPacketCheck(CheckType.AUTOCLICKER, player, data, event);
+                    runPacketCheck(CheckType.AUTOCLICKER, player, data);
                 }
             }
         };
@@ -63,10 +61,10 @@ public class PacketListener {
         }
     }
 
-    private void runPacketCheck(CheckType type, Player player, PlayerData data, PacketEvent event) {
-        Check check = plugin.getCheckManager().getCheck(type);
+    private void runPacketCheck(CheckType type, Player player, PlayerData data) {
+        Check check = pluginInstance.getCheckManager().getCheck(type);
         if (check == null || !check.isEnabled()) return;
-        // Packet-level checks will be handled in their own classes later
-        // For now, Bukkit checks still work
+        // Packet-level checks will be handled here later
+        // For now, existing Bukkit checks still do the work
     }
 }
