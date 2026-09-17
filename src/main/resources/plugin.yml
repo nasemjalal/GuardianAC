@@ -4,6 +4,7 @@ main: com.nasem.guardianac.GuardianAC
 api-version: '1.21'
 author: Nasem
 description: Anti-Cheat plugin for Paper 1.21
+depend: [ProtocolLib]
 commands:
   guardian:
     description: GuardianAC main command
