@@ -1,0 +1,138 @@
+# GuardianAC Configuration
+# Anti-Cheat plugin for Paper 1.21
+
+settings:
+  # Prefix for all chat messages
+  prefix: "&8[&bGuardianAC&8] &r"
+  # Enable alerts in console
+  console-alerts: true
+  # Minimum violation level before alerting staff
+  alert-threshold: 1
+
+checks:
+  speed:
+    enabled: true
+    max-violations: 20
+    decay-seconds: 10
+    # Max blocks per tick (vanilla sprint = 0.28)
+    max-speed: 0.35
+
+  flight:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15
+    # Ticks allowed in air before flagging
+    max-air-ticks: 20
+
+  reach:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 12
+    # Max attack distance (vanilla = 3.0)
+    max-reach: 3.2
+
+  killaura:
+    enabled: true
+    max-violations: 20
+    decay-seconds: 10
+    # Max angle difference for hit (degrees)
+    max-angle: 90.0
+
+  autoclicker:
+    enabled: true
+    max-violations: 25
+    decay-seconds: 8
+    # Max clicks per second (legit = 8-12)
+    max-cps: 16.0
+
+  nofall:
+    enabled: true
+    max-violations: 12
+    decay-seconds: 15
+
+  jesus:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 12
+
+  step:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15
+    # Max step height (vanilla = 0.6)
+    max-step: 0.7
+
+  noslow:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 10
+
+  timer:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15
+    # Max balance difference (vanilla = 0)
+    max-balance: 5
+
+  fastplace:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 10
+    # Min ms between placements (vanilla ~ 200ms)
+    min-delay: 100
+
+  scaffold:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15
+
+  criticals:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15
+
+  velocity:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 12
+
+  phase:
+    enabled: true
+    max-violations: 5
+    decay-seconds: 20
+
+  inventorymove:
+    enabled: true
+    max-violations: 8
+    decay-seconds: 15
+
+  fastbreak:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 10
+    # Min ms between block breaks (vanilla ~ 100ms for stone)
+    min-delay: 50
+
+  blockreach:
+    enabled: true
+    max-violations: 15
+    decay-seconds: 12
+    # Max block interaction distance (vanilla = 4.5)
+    max-reach: 4.7
+
+  nuker:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15
+    # Max blocks broken in one tick
+    max-blocks-per-tick: 3
+
+  wallhack:
+    enabled: true
+    max-violations: 12
+    decay-seconds: 12
+
+  elytra:
+    enabled: true
+    max-violations: 10
+    decay-seconds: 15

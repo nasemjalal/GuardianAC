@@ -1,0 +1,105 @@
+package com.nasem.guardianac.listener;
+
+import com.nasem.guardianac.GuardianAC;
+import com.nasem.guardianac.check.Check;
+import com.nasem.guardianac.check.CheckType;
+import com.nasem.guardianac.data.PlayerData;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerMoveEvent;
+
+public class MovementListener implements Listener {
+
+    private final GuardianAC plugin;
+
+    public MovementListener(GuardianAC plugin) {
+        this.plugin = plugin;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        Location from = event.getFrom();
+        Location to = event.getTo();
+
+        // Ignore if no actual movement
+        if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) {
+            return;
+        }
+
+        PlayerData data = plugin.getPlayerDataManager().get(player);
+
+        // Track ground/air state
+        if (player.isOnGround()) {
+            data.incrementGroundTicks();
+            data.resetAirTicks();
+            data.setLastGroundLocation(to.clone());
+        } else {
+            data.incrementAirTicks();
+            data.resetGroundTicks();
+        }
+
+        // Run movement checks
+        runCheck(CheckType.SPEED, player, data, from, to);
+        runCheck(CheckType.FLIGHT, player, data, from, to);
+        runCheck(CheckType.NOFALL, player, data, from, to);
+        runCheck(CheckType.JESUS, player, data, from, to);
+        runCheck(CheckType.STEP, player, data, from, to);
+        runCheck(CheckType.NOSLOW, player, data, from, to);
+        runCheck(CheckType.PHASE, player, data, from, to);
+        runCheck(CheckType.ELYTRA, player, data, from, to);
+        runCheck(CheckType.TIMER, player, data, from, to);
+        runCheck(CheckType.INVENTORYMOVE, player, data, from, to);
+
+        // Update last location
+        data.setLastLocation(to.clone());
+        data.setLastMoveTime(System.currentTimeMillis());
+    }
+
+    private void runCheck(CheckType type, Player player, PlayerData data, Location from, Location to) {
+        Check check = plugin.getCheckManager().getCheck(type);
+        if (check == null || !check.isEnabled()) return;
+
+        try {
+            switch (type) {
+                case SPEED:
+                    ((com.nasem.guardianac.check.impl.SpeedCheck) check).handle(player, data, from, to);
+                    break;
+                case FLIGHT:
+                    ((com.nasem.guardianac.check.impl.FlightCheck) check).handle(player, data, from, to);
+                    break;
+                case NOFALL:
+                    ((com.nasem.guardianac.check.impl.NoFallCheck) check).handle(player, data, from, to);
+                    break;
+                case JESUS:
+                    ((com.nasem.guardianac.check.impl.JesusCheck) check).handle(player, data, from, to);
+                    break;
+                case STEP:
+                    ((com.nasem.guardianac.check.impl.StepCheck) check).handle(player, data, from, to);
+                    break;
+                case NOSLOW:
+                    ((com.nasem.guardianac.check.impl.NoSlowCheck) check).handle(player, data, from, to);
+                    break;
+                case PHASE:
+                    ((com.nasem.guardianac.check.impl.PhaseCheck) check).handle(player, data, from, to);
+                    break;
+                case ELYTRA:
+                    ((com.nasem.guardianac.check.impl.ElytraCheck) check).handle(player, data, from, to);
+                    break;
+                case TIMER:
+                    ((com.nasem.guardianac.check.impl.TimerCheck) check).handle(player, data, from, to);
+                    break;
+                case INVENTORYMOVE:
+                    ((com.nasem.guardianac.check.impl.InventoryMoveCheck) check).handle(player, data, from, to);
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception ex) {
+            // Silently ignore
+        }
+    }
+}
