@@ -10,7 +10,6 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
-import com.nasem.guardianac.check.impl.InvWalkCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
 import com.nasem.guardianac.data.PlayerData;
 import org.bukkit.entity.Entity;
@@ -46,6 +45,23 @@ public class PacketListener {
 
                 PacketType type = event.getPacketType();
 
+                // ⭐⭐ مهم: نحدّث اتجاه النظر BEFORE ما يتعامل مع الباكت
+                if (type == PacketType.Play.Client.POSITION_LOOK
+                        || type == PacketType.Play.Client.LOOK) {
+                    try {
+                        PacketContainer packet = event.getPacket();
+                        float yaw = packet.getFloat().read(0);
+                        float pitch = packet.getFloat().read(1);
+
+                        // ⭐ نحفظ الاتجاه قبل التحديث
+                        data.setPreviousYaw(data.getCurrentYaw());
+                        data.setPreviousPitch(data.getCurrentPitch());
+                        data.setCurrentYaw(yaw);
+                        data.setCurrentPitch(pitch);
+                        data.setLastLookTime(System.currentTimeMillis());
+                    } catch (Exception ignored) {}
+                }
+
                 if (type == PacketType.Play.Client.ARM_ANIMATION) {
                     data.incrementClicks();
                     handleSwing(player, data);
@@ -66,16 +82,9 @@ public class PacketListener {
     }
 
     private void handleSwing(Player player, PlayerData data) {
-        // KillAura swing check
-        Check killAura = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
-        if (killAura instanceof KillAuraCheck && killAura.isEnabled()) {
-            ((KillAuraCheck) killAura).handleSwing(player, data);
-        }
-
-        // InvWalk swing check
-        Check invWalk = pluginInstance.getCheckManager().getCheck(CheckType.INVENTORYMOVE);
-        if (invWalk instanceof InvWalkCheck && invWalk.isEnabled()) {
-            ((InvWalkCheck) invWalk).handleSwing(player, data);
+        Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
+        if (check instanceof KillAuraCheck && check.isEnabled()) {
+            ((KillAuraCheck) check).handleSwing(player, data);
         }
     }
 

@@ -7,25 +7,24 @@ import com.nasem.guardianac.data.PlayerData;
 import com.nasem.guardianac.util.MathUtil;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
-
-import java.util.List;
 
 public class KillAuraCheck extends Check {
 
     private final double maxAngle;
     private final long minAttackDelay;
+    // ⭐ زاوية تغيير النظر المفاجئ
+    private final float maxYawChange = 90.0f;
 
     public KillAuraCheck(GuardianAC plugin) {
         super(plugin, CheckType.KILLAURA);
-        this.maxAngle = plugin.getConfig().getDouble("checks.killaura.max-angle", 65.0);
+        this.maxAngle = plugin.getConfig().getDouble("checks.killaura.max-angle", 75.0);
         this.minAttackDelay = plugin.getConfig().getLong("checks.killaura.min-attack-delay", 55);
     }
 
     /**
-     * ⭐ packet-level من USE_ENTITY
+     * ⭐ packet-level — USE_ENTITY
      */
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
@@ -35,6 +34,17 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
+            // ⭐⭐⭐ فحص Silent Aim — النظر قفز فجأة
+            float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
+            // نتعامل مع wrap-around (0° و 360°)
+            if (yawDiff > 180) yawDiff = 360 - yawDiff;
+
+            if (yawDiff > maxYawChange) {
+                flag(attacker, data, "silent-aim yaw jump=" + MathUtil.round(yawDiff, 1) + "°");
+                return;
+            }
+
+            // ⭐ فحص الزاوية العادي
             Vector look = attacker.getEyeLocation().getDirection().normalize();
             Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
                     .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
@@ -42,17 +52,18 @@ public class KillAuraCheck extends Check {
             double angle = MathUtil.angle(look, toTarget);
 
             if (angle > maxAngle) {
-                flag(attacker, data, "packet angle=" + MathUtil.round(angle, 1) + "°");
+                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "°");
                 return;
             }
 
+            // ⭐ فحص سرعة الضرب
             long now = System.currentTimeMillis();
             long last = data.getLastAttackTime();
 
             if (last > 0) {
                 long diff = now - last;
                 if (diff < minAttackDelay && diff > 0) {
-                    flag(attacker, data, "packet delay=" + diff + "ms");
+                    flag(attacker, data, "fast attack=" + diff + "ms");
                     return;
                 }
             }
@@ -72,6 +83,16 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
+            // ⭐ Silent aim
+            float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
+            if (yawDiff > 180) yawDiff = 360 - yawDiff;
+
+            if (yawDiff > maxYawChange) {
+                flag(attacker, data, "bukkit silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
+                return;
+            }
+
+            // ⭐ زاوية
             Vector look = attacker.getEyeLocation().getDirection().normalize();
             Vector toTarget = victim.getLocation().add(0, victim.getHeight() / 2.0, 0)
                     .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
@@ -85,7 +106,7 @@ public class KillAuraCheck extends Check {
     }
 
     /**
-     * ⭐ swing check — محسّن مع try/catch كامل
+     * ⭐ swing check
      */
     public void handleSwing(Player attacker, PlayerData data) {
         if (!enabled) return;
@@ -95,47 +116,12 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ نتأكد إن العالم محمّل
-            if (attacker.getWorld() == null) return;
-            if (!attacker.isOnline()) return;
+            // ⭐ Silent aim — حتى في swing
+            float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
+            if (yawDiff > 180) yawDiff = 360 - yawDiff;
 
-            Vector look = attacker.getEyeLocation().getDirection().normalize();
-
-            LivingEntity nearest = null;
-            double nearestDist = 6.0;
-
-            // ⭐ نستخدم try/catch حول getNearbyEntities
-            List<Entity> nearby;
-            try {
-                nearby = attacker.getNearbyEntities(6, 6, 6);
-            } catch (Exception e) {
-                return;
-            }
-
-            for (Entity entity : nearby) {
-                if (entity == null) continue;
-                if (entity == attacker) continue;
-                if (!(entity instanceof LivingEntity)) continue;
-                if (!entity.isValid()) continue;
-
-                try {
-                    double dist = entity.getLocation().distance(attacker.getLocation());
-                    if (dist < nearestDist) {
-                        nearestDist = dist;
-                        nearest = (LivingEntity) entity;
-                    }
-                } catch (Exception ignored) {}
-            }
-
-            if (nearest == null) return;
-
-            Vector toTarget = nearest.getLocation().add(0, nearest.getHeight() / 2.0, 0)
-                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
-
-            double angle = MathUtil.angle(look, toTarget);
-
-            if (angle > maxAngle + 20) {
-                flag(attacker, data, "swing angle=" + MathUtil.round(angle, 1) + "°");
+            if (yawDiff > maxYawChange) {
+                flag(attacker, data, "swing silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
             }
         } catch (Exception ignored) {}
     }
