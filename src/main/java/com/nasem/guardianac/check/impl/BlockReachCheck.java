@@ -5,6 +5,7 @@ import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
 import com.nasem.guardianac.util.MathUtil;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -16,13 +17,15 @@ public class BlockReachCheck extends Check {
 
     public BlockReachCheck(GuardianAC plugin) {
         super(plugin, CheckType.BLOCKREACH);
-        this.maxReach = plugin.getConfig().getDouble("checks.blockreach.max-reach", 4.7);
+        // ⭐ قللناها إلى 4.0 (vanilla ~4.5)
+        this.maxReach = plugin.getConfig().getDouble("checks.blockreach.max-reach", 4.0);
     }
 
     public void handleBreak(Player player, BlockBreakEvent event, PlayerData data) {
         if (!enabled) return;
 
-        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
+        GameMode gm = player.getGameMode();
+        if (gm == GameMode.CREATIVE) return;
 
         Location eye = player.getEyeLocation();
         Location blockCenter = event.getBlock().getLocation().add(0.5, 0.5, 0.5);
@@ -30,14 +33,16 @@ public class BlockReachCheck extends Check {
         double distance = eye.distance(blockCenter);
 
         if (distance > maxReach) {
-            flag(player, data, "break reach=" + MathUtil.round(distance, 2));
+            flag(player, data, "break reach=" + MathUtil.round(distance, 2)
+                    + " max=" + maxReach);
         }
     }
 
     public void handlePlace(Player player, BlockPlaceEvent event, PlayerData data) {
         if (!enabled) return;
 
-        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
+        GameMode gm = player.getGameMode();
+        if (gm == GameMode.CREATIVE) return;
 
         Location eye = player.getEyeLocation();
         Location blockCenter = event.getBlock().getLocation().add(0.5, 0.5, 0.5);
@@ -45,7 +50,8 @@ public class BlockReachCheck extends Check {
         double distance = eye.distance(blockCenter);
 
         if (distance > maxReach) {
-            flag(player, data, "place reach=" + MathUtil.round(distance, 2));
+            flag(player, data, "place reach=" + MathUtil.round(distance, 2)
+                    + " max=" + maxReach);
         }
     }
 }

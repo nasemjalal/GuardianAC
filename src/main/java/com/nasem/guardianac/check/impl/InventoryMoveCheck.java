@@ -5,10 +5,14 @@ import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
 import com.nasem.guardianac.util.MathUtil;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 public class InventoryMoveCheck extends Check {
+
+    // ⭐ قللناها — أي حركة > 0.05 = flag
+    private static final double MIN_MOVE = 0.05;
 
     public InventoryMoveCheck(GuardianAC plugin) {
         super(plugin, CheckType.INVENTORYMOVE);
@@ -17,16 +21,21 @@ public class InventoryMoveCheck extends Check {
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
+        // ⭐ ما نفحص إلى إذا الإنفنتوري مفتوح
         if (!data.isInventoryOpen()) return;
 
-        // Player shouldn't be able to move while inventory is open (vanilla)
+        GameMode gm = player.getGameMode();
+        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+        if (player.isInsideVehicle()) return;
+
+        // ⭐ نقيس الحركة الأفقية
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
         double speed = Math.sqrt(dx * dx + dz * dz);
 
-        // Allow small movement (server lag, minor adjustments)
-        if (speed > 0.2) {
-            flag(player, data, "speed=" + MathUtil.round(speed, 3));
+        // ⭐⭐⭐ أي حركة > 0.05 = flag
+        if (speed > MIN_MOVE) {
+            flag(player, data, "move=" + MathUtil.round(speed, 3));
         }
     }
 }
