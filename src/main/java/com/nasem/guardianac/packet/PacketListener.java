@@ -35,7 +35,6 @@ public class PacketListener {
                 PacketType.Play.Client.FLYING,
                 PacketType.Play.Client.ARM_ANIMATION,
                 PacketType.Play.Client.USE_ENTITY,
-                PacketType.Play.Client.CLIENT_COMMAND,
                 PacketType.Play.Client.WINDOW_CLICK) {
 
             @Override
@@ -48,7 +47,7 @@ public class PacketListener {
 
                 PacketType type = event.getPacketType();
 
-                // ⭐⭐ تتبع النظر (KillAura)
+                // ⭐ تتبع النظر (KillAura)
                 if (type == PacketType.Play.Client.POSITION_LOOK
                         || type == PacketType.Play.Client.LOOK) {
                     try {
@@ -64,22 +63,7 @@ public class PacketListener {
                     } catch (Exception ignored) {}
                 }
 
-                // ⭐⭐ InvWalk — من CLIENT_COMMAND
-                if (type == PacketType.Play.Client.CLIENT_COMMAND) {
-                    try {
-                        PacketContainer packet = event.getPacket();
-                        EnumWrappers.ClientCommand action =
-                                packet.getClientCommands().read(0);
-
-                        // OPEN_INVENTORY = فتح الإنفنتوري
-                        if (action == EnumWrappers.ClientCommand.OPEN_INVENTORY) {
-                            data.setInventoryOpen(true);
-                            data.setLastInvOpenTime(System.currentTimeMillis());
-                        }
-                    } catch (Exception ignored) {}
-                }
-
-                // ⭐⭐ WINDOW_CLICK = تفاعل مع الإنفنتوري
+                // ⭐ InvWalk — من WINDOW_CLICK
                 if (type == PacketType.Play.Client.WINDOW_CLICK) {
                     data.setInventoryOpen(true);
                     data.setLastInvOpenTime(System.currentTimeMillis());
