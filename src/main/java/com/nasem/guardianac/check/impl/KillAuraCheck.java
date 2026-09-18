@@ -11,6 +11,8 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
+import java.util.List;
+
 public class KillAuraCheck extends Check {
 
     private final double maxAngle;
@@ -28,33 +30,35 @@ public class KillAuraCheck extends Check {
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
 
-        GameMode gm = attacker.getGameMode();
-        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
-        if (attacker.isInsideVehicle()) return;
+        try {
+            GameMode gm = attacker.getGameMode();
+            if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+            if (attacker.isInsideVehicle()) return;
 
-        Vector look = attacker.getEyeLocation().getDirection().normalize();
-        Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
-                .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
+            Vector look = attacker.getEyeLocation().getDirection().normalize();
+            Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
+                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
 
-        double angle = MathUtil.angle(look, toTarget);
+            double angle = MathUtil.angle(look, toTarget);
 
-        if (angle > maxAngle) {
-            flag(attacker, data, "packet angle=" + MathUtil.round(angle, 1) + "°");
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        long last = data.getLastAttackTime();
-
-        if (last > 0) {
-            long diff = now - last;
-            if (diff < minAttackDelay && diff > 0) {
-                flag(attacker, data, "packet delay=" + diff + "ms");
+            if (angle > maxAngle) {
+                flag(attacker, data, "packet angle=" + MathUtil.round(angle, 1) + "°");
                 return;
             }
-        }
 
-        data.setLastAttackTime(now);
+            long now = System.currentTimeMillis();
+            long last = data.getLastAttackTime();
+
+            if (last > 0) {
+                long diff = now - last;
+                if (diff < minAttackDelay && diff > 0) {
+                    flag(attacker, data, "packet delay=" + diff + "ms");
+                    return;
+                }
+            }
+
+            data.setLastAttackTime(now);
+        } catch (Exception ignored) {}
     }
 
     /**
@@ -63,58 +67,76 @@ public class KillAuraCheck extends Check {
     public void handle(Player attacker, Entity victim, PlayerData data) {
         if (!enabled) return;
 
-        GameMode gm = attacker.getGameMode();
-        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
-        if (attacker.isInsideVehicle()) return;
+        try {
+            GameMode gm = attacker.getGameMode();
+            if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+            if (attacker.isInsideVehicle()) return;
 
-        Vector look = attacker.getEyeLocation().getDirection().normalize();
-        Vector toTarget = victim.getLocation().add(0, victim.getHeight() / 2.0, 0)
-                .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
+            Vector look = attacker.getEyeLocation().getDirection().normalize();
+            Vector toTarget = victim.getLocation().add(0, victim.getHeight() / 2.0, 0)
+                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
 
-        double angle = MathUtil.angle(look, toTarget);
+            double angle = MathUtil.angle(look, toTarget);
 
-        if (angle > maxAngle) {
-            flag(attacker, data, "bukkit angle=" + MathUtil.round(angle, 1) + "°");
-        }
+            if (angle > maxAngle) {
+                flag(attacker, data, "bukkit angle=" + MathUtil.round(angle, 1) + "°");
+            }
+        } catch (Exception ignored) {}
     }
 
     /**
-     * ⭐ جديد: فحص من ARM_ANIMATION (بعض الهاكات ما ترسل USE_ENTITY)
+     * ⭐ swing check — محسّن مع try/catch كامل
      */
     public void handleSwing(Player attacker, PlayerData data) {
         if (!enabled) return;
 
-        GameMode gm = attacker.getGameMode();
-        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
-        if (attacker.isInsideVehicle()) return;
+        try {
+            GameMode gm = attacker.getGameMode();
+            if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+            if (attacker.isInsideVehicle()) return;
 
-        // ⭐ نبحث عن أقرب كيان جدام اللاعب
-        Vector look = attacker.getEyeLocation().getDirection().normalize();
-        LivingEntity nearest = null;
-        double nearestDist = 6.0;
+            // ⭐ نتأكد إن العالم محمّل
+            if (attacker.getWorld() == null) return;
+            if (!attacker.isOnline()) return;
 
-        for (Entity entity : attacker.getNearbyEntities(6, 6, 6)) {
-            if (entity == attacker) continue;
-            if (!(entity instanceof LivingEntity)) continue;
+            Vector look = attacker.getEyeLocation().getDirection().normalize();
 
-            double dist = entity.getLocation().distance(attacker.getLocation());
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearest = (LivingEntity) entity;
+            LivingEntity nearest = null;
+            double nearestDist = 6.0;
+
+            // ⭐ نستخدم try/catch حول getNearbyEntities
+            List<Entity> nearby;
+            try {
+                nearby = attacker.getNearbyEntities(6, 6, 6);
+            } catch (Exception e) {
+                return;
             }
-        }
 
-        if (nearest == null) return;
+            for (Entity entity : nearby) {
+                if (entity == null) continue;
+                if (entity == attacker) continue;
+                if (!(entity instanceof LivingEntity)) continue;
+                if (!entity.isValid()) continue;
 
-        // ⭐ نحسب الزاوية بين نظر اللاعب والكيان الأقرب
-        Vector toTarget = nearest.getLocation().add(0, nearest.getHeight() / 2.0, 0)
-                .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
+                try {
+                    double dist = entity.getLocation().distance(attacker.getLocation());
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = (LivingEntity) entity;
+                    }
+                } catch (Exception ignored) {}
+            }
 
-        double angle = MathUtil.angle(look, toTarget);
+            if (nearest == null) return;
 
-        // ⭐ إذا اللاعب يلوّح لكن ما يبص للكيان = KillAura
-        if (angle > maxAngle + 20) {
-            flag(attacker, data, "swing angle=" + MathUtil.round(angle, 1) + "°");
-        }
+            Vector toTarget = nearest.getLocation().add(0, nearest.getHeight() / 2.0, 0)
+                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
+
+            double angle = MathUtil.angle(look, toTarget);
+
+            if (angle > maxAngle + 20) {
+                flag(attacker, data, "swing angle=" + MathUtil.round(angle, 1) + "°");
+            }
+        } catch (Exception ignored) {}
     }
 }
