@@ -33,11 +33,7 @@ public class PacketListener {
                 PacketType.Play.Client.LOOK,
                 PacketType.Play.Client.FLYING,
                 PacketType.Play.Client.ARM_ANIMATION,
-                PacketType.Play.Client.USE_ENTITY,
-                PacketType.Play.Client.BLOCK_PLACE,
-                PacketType.Play.Client.BLOCK_DIG,
-                PacketType.Play.Client.WINDOW_CLICK,
-                PacketType.Play.Client.CLOSE_WINDOW) {
+                PacketType.Play.Client.USE_ENTITY) {
 
             @Override
             public void onPacketReceiving(PacketEvent event) {
@@ -49,23 +45,14 @@ public class PacketListener {
 
                 PacketType type = event.getPacketType();
 
-                // ⭐ الحركة
-                if (type == PacketType.Play.Client.POSITION
-                        || type == PacketType.Play.Client.POSITION_LOOK) {
-                    // movement handled by Bukkit events
-                }
-
-                // ⭐ Swing
-                else if (type == PacketType.Play.Client.ARM_ANIMATION) {
+                if (type == PacketType.Play.Client.ARM_ANIMATION) {
                     data.incrementClicks();
-                }
-
-                // ⭐ ضرب كيان (KillAura)
-                else if (type == PacketType.Play.Client.USE_ENTITY) {
+                    // ⭐ KillAura من Swing
+                    handleSwing(player, data);
+                } else if (type == PacketType.Play.Client.USE_ENTITY) {
                     handleUseEntity(event, player, data);
                 }
 
-                // ⭐ Timer (نحسب عدد الباكتات)
                 if (type == PacketType.Play.Client.POSITION
                         || type == PacketType.Play.Client.POSITION_LOOK
                         || type == PacketType.Play.Client.LOOK
@@ -78,6 +65,9 @@ public class PacketListener {
         protocolManager.addPacketListener(adapter);
     }
 
+    /**
+     * ⭐ KillAura من USE_ENTITY
+     */
     private void handleUseEntity(PacketEvent event, Player player, PlayerData data) {
         try {
             PacketContainer packet = event.getPacket();
@@ -99,6 +89,16 @@ public class PacketListener {
                 ((KillAuraCheck) check).handlePacket(player, data, target);
             }
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * ⭐ KillAura من ARM_ANIMATION
+     */
+    private void handleSwing(Player player, PlayerData data) {
+        Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
+        if (check instanceof KillAuraCheck && check.isEnabled()) {
+            ((KillAuraCheck) check).handleSwing(player, data);
+        }
     }
 
     public void unregister() {

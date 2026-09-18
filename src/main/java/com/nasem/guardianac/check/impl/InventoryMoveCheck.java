@@ -18,24 +18,24 @@ public class InventoryMoveCheck extends Check {
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
-        // ⭐⭐⭐ إذا الإنفنتوري ما مفتوح — نتجاهل
+        // ⭐ نحسب الحركة أول
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        double speed = Math.sqrt(dx * dx + dz * dz);
+
+        // ⭐ إذا الحركة ضعيفة — نتجاهل
+        if (speed < 0.05) return;
+
+        // ⭐ إذا الإنفنتوري ما مفتوح — نتجاهل
         if (!data.isInventoryOpen()) return;
 
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
         if (player.isInsideVehicle()) return;
-
-        // ⭐ ما نفحص الطيران
         if (player.isFlying() || player.getAllowFlight()) return;
         if (player.isGliding()) return;
 
-        double dx = to.getX() - from.getX();
-        double dz = to.getZ() - from.getZ();
-        double speed = Math.sqrt(dx * dx + dz * dz);
-
-        // ⭐ أي حركة > 0.03 = flag
-        if (speed > 0.03) {
-            flag(player, data, "move=" + MathUtil.round(speed, 3));
-        }
+        // ⭐ flag
+        flag(player, data, "move=" + MathUtil.round(speed, 3));
     }
 }

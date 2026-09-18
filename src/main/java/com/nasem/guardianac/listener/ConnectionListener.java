@@ -13,6 +13,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 public class ConnectionListener implements Listener {
 
@@ -36,16 +37,14 @@ public class ConnectionListener implements Listener {
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
-        PlayerData data = plugin.getPlayerDataManager().get(player);
-        data.setInventoryOpen(true);
+        plugin.getPlayerDataManager().get(player).setInventoryOpen(true);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
-        PlayerData data = plugin.getPlayerDataManager().get(player);
-        data.setInventoryOpen(false);
+        plugin.getPlayerDataManager().get(player).setInventoryOpen(false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
