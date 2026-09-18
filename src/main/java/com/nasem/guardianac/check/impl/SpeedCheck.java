@@ -13,58 +13,53 @@ import org.bukkit.entity.Player;
 public class SpeedCheck extends Check {
 
     private final double maxSpeed;
+    private final double sprintMultiplier;
 
     public SpeedCheck(GuardianAC plugin) {
         super(plugin, CheckType.SPEED);
-        this.maxSpeed = plugin.getConfig().getDouble("checks.speed.max-speed", 0.35);
+        this.maxSpeed = plugin.getConfig().getDouble("checks.speed.max-speed", 0.5);
+        this.sprintMultiplier = plugin.getConfig().getDouble("checks.speed.sprint-multiplier", 1.3);
     }
 
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
-        // ========== تجاهل حالات كثيرة ==========
+        // ========== تجاهل الحالات الطبيعية ==========
 
-        // 1. GameMode
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
 
-        // 2. طيران / إليترا / مركبة
         if (player.isFlying() || player.getAllowFlight()) return;
         if (player.isGliding()) return;
         if (player.isInsideVehicle()) return;
 
-        // 3. السباحة والماء
         if (player.isSwimming()) return;
         if (player.isInWater() || player.isInLava()) return;
         if (isInWaterAround(to)) return;
 
-        // 4. ⭐ Net ضعيف — نتجاهل إذا ping > 200
+        // ⭐ ping — نتجاهل فقط ping عالي جداً
         int ping = player.getPing();
-        if (ping > 200) return;
+        if (ping > 400) return;
 
-        // 5. ⭐ Sprint طبيعي — نسمح بسرعة أعلى
-        boolean sprinting = player.isSprinting();
-
-        // 6. ⭐ الهواء (قفز)
+        // ⭐ الهواء — نتجاهل
         if (!player.isOnGround()) return;
         if (data.getAirTicks() > 0) return;
 
-        // 7. Knockback حديث
-        if (System.currentTimeMillis() - data.getLastVelocityTime() < 2000) return;
+        // ⭐ Knockback
+        if (System.currentTimeMillis() - data.getLastVelocityTime() < 1500) return;
 
-        // 8. بوشن
+        // ⭐ بوشن
         if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) return;
         if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) return;
 
-        // 9. بلوكات خاصة (جليد، سلايم)
+        // ⭐ بلوكات خاصة
         if (isOnSpecialBlock(to)) return;
 
-        // 10. ⭐⭐ مهم: إذا تفاعل مع بلوك حديث (فتح باب، زر، صندوق)
-        // ننتظر 500ms قبل ما نفحصه
+        // ⭐ التفاعل مع بلوك (فتح باب، زر)
         long lastInteract = data.getLastBlockPlaceTime();
-        if (System.currentTimeMillis() - lastInteract < 500) return;
+        if (System.currentTimeMillis() - lastInteract < 300) return;
 
-        // ========== الحساب ==========
+        // ========== الحساب الفعلي ==========
 
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
@@ -72,14 +67,15 @@ public class SpeedCheck extends Check {
 
         if (speed < 0.01) return;
 
-        // ⭐ Sprint يسمح بسرعة أعلى (40% زيادة)
+        // ⭐ Sprint يعطي 30% زيادة
         double allowed = maxSpeed;
-        if (sprinting) {
-            allowed *= 1.4;
+        if (player.isSprinting()) {
+            allowed *= sprintMultiplier;
         }
 
-        // ⭐ نتجاهل الفروق الصغيرة
-        if (speed > allowed + 0.05) {
+        // ⭐⭐⭐ الهاك: السرعة تتجاوز بكثير
+        // نتجاهل الفروق الصغيرة (0.03)
+        if (speed > allowed + 0.03) {
             flag(player, data, "speed=" + MathUtil.round(speed, 3)
                     + " max=" + MathUtil.round(allowed, 3)
                     + " ping=" + ping);
@@ -91,7 +87,6 @@ public class SpeedCheck extends Check {
         Location[] checks = {
                 loc.clone(),
                 loc.clone().add(0, 1, 0),
-                loc.clone().add(0, 0.5, 0),
                 loc.clone().subtract(0, 1, 0)
         };
         for (Location check : checks) {

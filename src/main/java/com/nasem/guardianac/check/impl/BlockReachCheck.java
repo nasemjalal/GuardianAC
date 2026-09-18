@@ -17,41 +17,46 @@ public class BlockReachCheck extends Check {
 
     public BlockReachCheck(GuardianAC plugin) {
         super(plugin, CheckType.BLOCKREACH);
-        // ⭐ قللناها إلى 4.0 (vanilla ~4.5)
-        this.maxReach = plugin.getConfig().getDouble("checks.blockreach.max-reach", 4.0);
+        this.maxReach = plugin.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
     }
 
     public void handleBreak(Player player, BlockBreakEvent event, PlayerData data) {
         if (!enabled) return;
+        if (player.getGameMode() == GameMode.CREATIVE) return;
 
-        GameMode gm = player.getGameMode();
-        if (gm == GameMode.CREATIVE) return;
-
-        Location eye = player.getEyeLocation();
-        Location blockCenter = event.getBlock().getLocation().add(0.5, 0.5, 0.5);
-
-        double distance = eye.distance(blockCenter);
+        double distance = player.getEyeLocation()
+                .distance(event.getBlock().getLocation().add(0.5, 0.5, 0.5));
 
         if (distance > maxReach) {
-            flag(player, data, "break reach=" + MathUtil.round(distance, 2)
-                    + " max=" + maxReach);
+            flag(player, data, "bukkit break=" + MathUtil.round(distance, 2));
         }
     }
 
     public void handlePlace(Player player, BlockPlaceEvent event, PlayerData data) {
         if (!enabled) return;
+        if (player.getGameMode() == GameMode.CREATIVE) return;
 
-        GameMode gm = player.getGameMode();
-        if (gm == GameMode.CREATIVE) return;
-
-        Location eye = player.getEyeLocation();
-        Location blockCenter = event.getBlock().getLocation().add(0.5, 0.5, 0.5);
-
-        double distance = eye.distance(blockCenter);
+        double distance = player.getEyeLocation()
+                .distance(event.getBlock().getLocation().add(0.5, 0.5, 0.5));
 
         if (distance > maxReach) {
-            flag(player, data, "place reach=" + MathUtil.round(distance, 2)
-                    + " max=" + maxReach);
+            flag(player, data, "bukkit place=" + MathUtil.round(distance, 2));
         }
+    }
+
+    public void handlePacketBreak(Player player, PlayerData data, double reach) {
+        if (!enabled) return;
+        if (player.getGameMode() == GameMode.CREATIVE) return;
+
+        flag(player, data, "packet break reach=" + MathUtil.round(reach, 2)
+                + " > " + maxReach);
+    }
+
+    public void handlePacketPlace(Player player, PlayerData data, double reach) {
+        if (!enabled) return;
+        if (player.getGameMode() == GameMode.CREATIVE) return;
+
+        flag(player, data, "packet place reach=" + MathUtil.round(reach, 2)
+                + " > " + maxReach);
     }
 }

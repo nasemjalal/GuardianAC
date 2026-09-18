@@ -36,6 +36,7 @@ public class PlayerData {
     private long lastBlockBreakTime;
     private long lastBlockPlaceTime;
     private Location lastBlockBreakLocation;
+    private Location lastBlockPlaceLocation;
 
     private long lastVelocityTime;
     private boolean pendingVelocity;
@@ -48,7 +49,6 @@ public class PlayerData {
     private boolean inventoryOpen;
     private long lastInvOpenTime;
 
-    // ⭐⭐ جديد — تتبع حركة اللاعب في آخر 500ms
     private double lastMovementSpeed;
     private long lastActualMoveTime;
 
@@ -135,6 +135,8 @@ public class PlayerData {
     public void setLastBlockPlaceTime(long time) { this.lastBlockPlaceTime = time; }
     public Location getLastBlockBreakLocation() { return lastBlockBreakLocation; }
     public void setLastBlockBreakLocation(Location loc) { this.lastBlockBreakLocation = loc; }
+    public Location getLastBlockPlaceLocation() { return lastBlockPlaceLocation; }
+    public void setLastBlockPlaceLocation(Location loc) { this.lastBlockPlaceLocation = loc; }
 
     public long getLastVelocityTime() { return lastVelocityTime; }
     public void setLastVelocityTime(long time) { this.lastVelocityTime = time; }
@@ -159,7 +161,6 @@ public class PlayerData {
     public long getLastInvOpenTime() { return lastInvOpenTime; }
     public void setLastInvOpenTime(long time) { this.lastInvOpenTime = time; }
 
-    // ⭐⭐ جديد
     public double getLastMovementSpeed() { return lastMovementSpeed; }
     public void setLastMovementSpeed(double speed) { this.lastMovementSpeed = speed; }
     public long getLastActualMoveTime() { return lastActualMoveTime; }
