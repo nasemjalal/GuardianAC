@@ -11,9 +11,6 @@ import org.bukkit.entity.Player;
 
 public class InventoryMoveCheck extends Check {
 
-    // ⭐ قللناها — أي حركة > 0.05 = flag
-    private static final double MIN_MOVE = 0.05;
-
     public InventoryMoveCheck(GuardianAC plugin) {
         super(plugin, CheckType.INVENTORYMOVE);
     }
@@ -21,20 +18,23 @@ public class InventoryMoveCheck extends Check {
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
-        // ⭐ ما نفحص إلى إذا الإنفنتوري مفتوح
+        // ⭐⭐⭐ إذا الإنفنتوري ما مفتوح — نتجاهل
         if (!data.isInventoryOpen()) return;
 
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
         if (player.isInsideVehicle()) return;
 
-        // ⭐ نقيس الحركة الأفقية
+        // ⭐ ما نفحص الطيران
+        if (player.isFlying() || player.getAllowFlight()) return;
+        if (player.isGliding()) return;
+
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
         double speed = Math.sqrt(dx * dx + dz * dz);
 
-        // ⭐⭐⭐ أي حركة > 0.05 = flag
-        if (speed > MIN_MOVE) {
+        // ⭐ أي حركة > 0.03 = flag
+        if (speed > 0.03) {
             flag(player, data, "move=" + MathUtil.round(speed, 3));
         }
     }

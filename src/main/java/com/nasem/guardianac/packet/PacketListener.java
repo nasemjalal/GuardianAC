@@ -10,7 +10,6 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
-import com.nasem.guardianac.check.impl.FastPlaceCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
 import com.nasem.guardianac.data.PlayerData;
 import org.bukkit.entity.Entity;
@@ -28,14 +27,17 @@ public class PacketListener {
     }
 
     public void register() {
-        adapter = new PacketAdapter(pluginInstance, ListenerPriority.HIGH,
+        adapter = new PacketAdapter(pluginInstance, ListenerPriority.HIGHEST,
                 PacketType.Play.Client.POSITION,
                 PacketType.Play.Client.POSITION_LOOK,
                 PacketType.Play.Client.LOOK,
                 PacketType.Play.Client.FLYING,
                 PacketType.Play.Client.ARM_ANIMATION,
                 PacketType.Play.Client.USE_ENTITY,
-                PacketType.Play.Client.BLOCK_PLACE) {
+                PacketType.Play.Client.BLOCK_PLACE,
+                PacketType.Play.Client.BLOCK_DIG,
+                PacketType.Play.Client.WINDOW_CLICK,
+                PacketType.Play.Client.CLOSE_WINDOW) {
 
             @Override
             public void onPacketReceiving(PacketEvent event) {
@@ -47,16 +49,28 @@ public class PacketListener {
 
                 PacketType type = event.getPacketType();
 
+                // ⭐ الحركة
                 if (type == PacketType.Play.Client.POSITION
                         || type == PacketType.Play.Client.POSITION_LOOK) {
-                    // movement checks
-                } else if (type == PacketType.Play.Client.ARM_ANIMATION) {
+                    // movement handled by Bukkit events
+                }
+
+                // ⭐ Swing
+                else if (type == PacketType.Play.Client.ARM_ANIMATION) {
                     data.incrementClicks();
-                } else if (type == PacketType.Play.Client.USE_ENTITY) {
+                }
+
+                // ⭐ ضرب كيان (KillAura)
+                else if (type == PacketType.Play.Client.USE_ENTITY) {
                     handleUseEntity(event, player, data);
-                } else if (type == PacketType.Play.Client.BLOCK_PLACE) {
-                    // ⭐ FastPlace packet-level
-                    handleBlockPlace(player, data);
+                }
+
+                // ⭐ Timer (نحسب عدد الباكتات)
+                if (type == PacketType.Play.Client.POSITION
+                        || type == PacketType.Play.Client.POSITION_LOOK
+                        || type == PacketType.Play.Client.LOOK
+                        || type == PacketType.Play.Client.FLYING) {
+                    data.incrementPacketCount();
                 }
             }
         };
@@ -64,13 +78,9 @@ public class PacketListener {
         protocolManager.addPacketListener(adapter);
     }
 
-    /**
-     * ⭐ معالجة ضربات اللاعب (KillAura)
-     */
     private void handleUseEntity(PacketEvent event, Player player, PlayerData data) {
         try {
             PacketContainer packet = event.getPacket();
-
             EnumWrappers.EntityUseAction action = packet.getEntityUseActions().read(0);
             if (action != EnumWrappers.EntityUseAction.ATTACK) return;
 
@@ -89,30 +99,6 @@ public class PacketListener {
                 ((KillAuraCheck) check).handlePacket(player, data, target);
             }
         } catch (Exception ignored) {}
-    }
-
-    /**
-     * ⭐ FastPlace packet-level — دقة أعلى
-     */
-    private void handleBlockPlace(Player player, PlayerData data) {
-        long now = System.currentTimeMillis();
-        long last = data.getLastBlockPlaceTime();
-
-        data.setLastBlockPlaceTime(now);
-
-        if (last == 0) return;
-
-        long diff = now - last;
-
-        // ⭐ إذا كان الفرق صغير جداً
-        long minDelay = pluginInstance.getConfig().getLong("checks.fastplace.min-delay", 80);
-
-        if (diff < minDelay && diff > 0) {
-            Check check = pluginInstance.getCheckManager().getCheck(CheckType.FASTPLACE);
-            if (check instanceof FastPlaceCheck && check.isEnabled()) {
-                ((FastPlaceCheck) check).handlePacket(player, data, diff);
-            }
-        }
     }
 
     public void unregister() {

@@ -4,68 +4,45 @@ import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 public class TimerCheck extends Check {
 
-    private final int maxBalance;
-
-    // ⭐ تسامح كبير — لأن lag يسبب false positives
-    private static final long MIN_TICK_MS = 35;  // قبل: 45
-    private static final long MAX_TICK_MS = 65;  // قبل: 55
+    // Vanilla: 20 packet/ثانية للحركة
+    // Timer hack: 25-30+ packet/ثانية
+    private static final int VANILLA_PACKETS_PER_SEC = 20;
+    private static final int MAX_PACKETS_PER_SEC = 24;
 
     public TimerCheck(GuardianAC plugin) {
         super(plugin, CheckType.TIMER);
-        this.maxBalance = plugin.getConfig().getInt("checks.timer.max-balance", 5);
     }
 
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
-        // تجاهل الحالات الطبيعية
-        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
-        if (player.getGameMode() == org.bukkit.GameMode.SPECTATOR) return;
+        GameMode gm = player.getGameMode();
+        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+        if (player.isInsideVehicle()) return;
 
-        // ⭐ تجاهل إذا اللاعب lag (ping > 300ms)
-        int ping = player.getPing();
-        if (ping > 300) {
-            data.setTimerBalance(0);
+        if (player.getPing() > 250) {
+            data.setPacketWindowStart(System.currentTimeMillis());
             return;
         }
 
         long now = System.currentTimeMillis();
-        long last = data.getLastTimerCheck();
+        long windowStart = data.getPacketWindowStart();
 
-        if (last == 0) {
-            data.setLastTimerCheck(now);
-            return;
-        }
+        if (now - windowStart >= 1000) {
+            int packets = data.getPacketCount();
 
-        long elapsed = now - last;
+            // ⭐ عدد الباكتات في الثانية
+            if (packets > MAX_PACKETS_PER_SEC) {
+                flag(player, data, "packets/sec=" + packets);
+            }
 
-        // ⭐ نتجاهل القيم الشاذة (lag spikes)
-        if (elapsed > 500 || elapsed < 10) {
-            data.setLastTimerCheck(now);
-            return;
-        }
-
-        // Vanilla: ~50ms per tick
-        if (elapsed < MIN_TICK_MS) {
-            data.addTimerBalance(1);
-        } else if (elapsed > MAX_TICK_MS) {
-            data.addTimerBalance(-1);
-        }
-
-        data.setLastTimerCheck(now);
-
-        // ⭐ عتبة أعلى (10 بدل 5)
-        int threshold = maxBalance * 2;
-        if (data.getTimerBalance() > threshold) {
-            flag(player, data, "balance=" + data.getTimerBalance() + " ping=" + ping);
-            data.setTimerBalance(0);
-        } else if (data.getTimerBalance() < -threshold) {
-            data.setTimerBalance(0);
+            data.setPacketWindowStart(now);
         }
     }
 }

@@ -12,43 +12,34 @@ public class PlayerData {
     private final UUID uuid;
     private final String name;
 
-    // Violations per check
     private final Map<CheckType, Integer> violations = new EnumMap<>(CheckType.class);
-
-    // Last tick timestamp for each check (for decay)
     private final Map<CheckType, Long> lastFlagTime = new EnumMap<>(CheckType.class);
 
-    // Movement tracking
     private Location lastLocation;
     private Location lastGroundLocation;
     private long lastMoveTime;
 
-    // Air ticks counter (for Flight check)
     private int airTicks;
-
-    // Ground ticks counter
     private int groundTicks;
 
-    // Combat tracking
     private long lastAttackTime;
     private int clicksThisSecond;
     private long clickWindowStart;
     private Location lastAttackLocation;
 
-    // Block interaction tracking
     private long lastBlockBreakTime;
     private long lastBlockPlaceTime;
     private Location lastBlockBreakLocation;
 
-    // Velocity tracking
     private long lastVelocityTime;
     private boolean pendingVelocity;
 
-    // Timer balance
+    // ⭐ Timer
     private long lastTimerCheck;
     private int timerBalance;
+    private int packetCount;
+    private long packetWindowStart;
 
-    // Inventory state
     private boolean inventoryOpen;
 
     public PlayerData(UUID uuid, String name) {
@@ -59,15 +50,11 @@ public class PlayerData {
             lastFlagTime.put(type, 0L);
         }
         this.clickWindowStart = System.currentTimeMillis();
+        this.packetWindowStart = System.currentTimeMillis();
     }
 
-    public UUID getUuid() {
-        return uuid;
-    }
-
-    public String getName() {
-        return name;
-    }
+    public UUID getUuid() { return uuid; }
+    public String getName() { return name; }
 
     // ============ Violations ============
 
@@ -94,19 +81,13 @@ public class PlayerData {
         }
     }
 
-    /**
-     * Decay violations based on time passed since last flag.
-     * Called periodically.
-     */
     public void decayViolations(int decaySeconds) {
         long now = System.currentTimeMillis();
         for (CheckType type : CheckType.values()) {
             int vl = violations.getOrDefault(type, 0);
             if (vl <= 0) continue;
-
             long lastFlag = lastFlagTime.getOrDefault(type, 0L);
             long elapsed = (now - lastFlag) / 1000L;
-
             if (elapsed >= decaySeconds) {
                 violations.put(type, Math.max(0, vl - 1));
                 lastFlagTime.put(type, now);
@@ -115,69 +96,23 @@ public class PlayerData {
     }
 
     // ============ Movement ============
-
-    public Location getLastLocation() {
-        return lastLocation;
-    }
-
-    public void setLastLocation(Location loc) {
-        this.lastLocation = loc;
-    }
-
-    public Location getLastGroundLocation() {
-        return lastGroundLocation;
-    }
-
-    public void setLastGroundLocation(Location loc) {
-        this.lastGroundLocation = loc;
-    }
-
-    public long getLastMoveTime() {
-        return lastMoveTime;
-    }
-
-    public void setLastMoveTime(long time) {
-        this.lastMoveTime = time;
-    }
-
-    public int getAirTicks() {
-        return airTicks;
-    }
-
-    public void incrementAirTicks() {
-        this.airTicks++;
-    }
-
-    public void resetAirTicks() {
-        this.airTicks = 0;
-    }
-
-    public int getGroundTicks() {
-        return groundTicks;
-    }
-
-    public void incrementGroundTicks() {
-        this.groundTicks++;
-    }
-
-    public void resetGroundTicks() {
-        this.groundTicks = 0;
-    }
+    public Location getLastLocation() { return lastLocation; }
+    public void setLastLocation(Location loc) { this.lastLocation = loc; }
+    public Location getLastGroundLocation() { return lastGroundLocation; }
+    public void setLastGroundLocation(Location loc) { this.lastGroundLocation = loc; }
+    public long getLastMoveTime() { return lastMoveTime; }
+    public void setLastMoveTime(long time) { this.lastMoveTime = time; }
+    public int getAirTicks() { return airTicks; }
+    public void incrementAirTicks() { this.airTicks++; }
+    public void resetAirTicks() { this.airTicks = 0; }
+    public int getGroundTicks() { return groundTicks; }
+    public void incrementGroundTicks() { this.groundTicks++; }
+    public void resetGroundTicks() { this.groundTicks = 0; }
 
     // ============ Combat ============
-
-    public long getLastAttackTime() {
-        return lastAttackTime;
-    }
-
-    public void setLastAttackTime(long time) {
-        this.lastAttackTime = time;
-    }
-
-    public int getClicksThisSecond() {
-        return clicksThisSecond;
-    }
-
+    public long getLastAttackTime() { return lastAttackTime; }
+    public void setLastAttackTime(long time) { this.lastAttackTime = time; }
+    public int getClicksThisSecond() { return clicksThisSecond; }
     public void incrementClicks() {
         long now = System.currentTimeMillis();
         if (now - clickWindowStart >= 1000L) {
@@ -186,92 +121,42 @@ public class PlayerData {
         }
         clicksThisSecond++;
     }
-
-    public long getClickWindowStart() {
-        return clickWindowStart;
-    }
-
-    public Location getLastAttackLocation() {
-        return lastAttackLocation;
-    }
-
-    public void setLastAttackLocation(Location loc) {
-        this.lastAttackLocation = loc;
-    }
+    public long getClickWindowStart() { return clickWindowStart; }
+    public Location getLastAttackLocation() { return lastAttackLocation; }
+    public void setLastAttackLocation(Location loc) { this.lastAttackLocation = loc; }
 
     // ============ Block Interaction ============
-
-    public long getLastBlockBreakTime() {
-        return lastBlockBreakTime;
-    }
-
-    public void setLastBlockBreakTime(long time) {
-        this.lastBlockBreakTime = time;
-    }
-
-    public long getLastBlockPlaceTime() {
-        return lastBlockPlaceTime;
-    }
-
-    public void setLastBlockPlaceTime(long time) {
-        this.lastBlockPlaceTime = time;
-    }
-
-    public Location getLastBlockBreakLocation() {
-        return lastBlockBreakLocation;
-    }
-
-    public void setLastBlockBreakLocation(Location loc) {
-        this.lastBlockBreakLocation = loc;
-    }
+    public long getLastBlockBreakTime() { return lastBlockBreakTime; }
+    public void setLastBlockBreakTime(long time) { this.lastBlockBreakTime = time; }
+    public long getLastBlockPlaceTime() { return lastBlockPlaceTime; }
+    public void setLastBlockPlaceTime(long time) { this.lastBlockPlaceTime = time; }
+    public Location getLastBlockBreakLocation() { return lastBlockBreakLocation; }
+    public void setLastBlockBreakLocation(Location loc) { this.lastBlockBreakLocation = loc; }
 
     // ============ Velocity ============
-
-    public long getLastVelocityTime() {
-        return lastVelocityTime;
-    }
-
-    public void setLastVelocityTime(long time) {
-        this.lastVelocityTime = time;
-    }
-
-    public boolean isPendingVelocity() {
-        return pendingVelocity;
-    }
-
-    public void setPendingVelocity(boolean pending) {
-        this.pendingVelocity = pending;
-    }
+    public long getLastVelocityTime() { return lastVelocityTime; }
+    public void setLastVelocityTime(long time) { this.lastVelocityTime = time; }
+    public boolean isPendingVelocity() { return pendingVelocity; }
+    public void setPendingVelocity(boolean pending) { this.pendingVelocity = pending; }
 
     // ============ Timer ============
+    public long getLastTimerCheck() { return lastTimerCheck; }
+    public void setLastTimerCheck(long time) { this.lastTimerCheck = time; }
+    public int getTimerBalance() { return timerBalance; }
+    public void addTimerBalance(int amount) { this.timerBalance += amount; }
+    public void setTimerBalance(int amount) { this.timerBalance = amount; }
 
-    public long getLastTimerCheck() {
-        return lastTimerCheck;
+    // ⭐ Packet counting
+    public int getPacketCount() { return packetCount; }
+    public void incrementPacketCount() { this.packetCount++; }
+    public long getPacketWindowStart() { return packetWindowStart; }
+    public void setPacketWindowStart(long time) {
+        this.packetWindowStart = time;
+        this.packetCount = 0;
     }
-
-    public void setLastTimerCheck(long time) {
-        this.lastTimerCheck = time;
-    }
-
-    public int getTimerBalance() {
-        return timerBalance;
-    }
-
-    public void addTimerBalance(int amount) {
-        this.timerBalance += amount;
-    }
-
-    public void setTimerBalance(int amount) {
-        this.timerBalance = amount;
-    }
+    public void resetPacketCount() { this.packetCount = 0; }
 
     // ============ Inventory ============
-
-    public boolean isInventoryOpen() {
-        return inventoryOpen;
-    }
-
-    public void setInventoryOpen(boolean open) {
-        this.inventoryOpen = open;
-    }
+    public boolean isInventoryOpen() { return inventoryOpen; }
+    public void setInventoryOpen(boolean open) { this.inventoryOpen = open; }
 }

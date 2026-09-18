@@ -12,9 +12,9 @@ import org.bukkit.event.block.BlockBreakEvent;
 
 public class NukerCheck extends Check {
 
-    // ⭐ أقصى مسافة بين البلوكات المكسورة في وقت قصير
-    private static final double MAX_DISTANCE = 2.5;
-    private static final long MAX_TIME = 200; // ms
+    // ⭐ عدد البلوكات في آخر ثانية
+    private static final long WINDOW_MS = 1000;
+    private static final int MAX_BREAKS = 5;
 
     public NukerCheck(GuardianAC plugin) {
         super(plugin, CheckType.NUKER);
@@ -26,35 +26,42 @@ public class NukerCheck extends Check {
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE) return;
 
-        Location current = event.getBlock().getLocation();
-        Location last = data.getLastBlockBreakLocation();
-
-        if (last == null) return;
-
         long now = System.currentTimeMillis();
-        long timeDiff = now - data.getLastBlockBreakTime();
+        long last = data.getLastBlockBreakTime();
 
-        // ⭐ إذا كسر بلوك خلال وقت قصير جداً
-        if (timeDiff > 0 && timeDiff < MAX_TIME) {
-            double dist = current.distance(last);
+        Location current = event.getBlock().getLocation();
+        Location lastLoc = data.getLastBlockBreakLocation();
 
-            // ⭐ إذا البلوكين متباعدين > 2.5 بلوك = Nuker
-            if (dist > MAX_DISTANCE) {
-                flag(player, data, "dist=" + MathUtil.round(dist, 2)
-                        + " in " + timeDiff + "ms");
-                return;
-            }
+        // ⭐ 1. كسر متتالي في وقت قصير
+        if (last > 0) {
+            long diff = now - last;
 
-            // ⭐ كسر 3+ بلوكات في 200ms = Nuker
-            long recentBreakKey = 0;
-            // نحسب عدد البلوكات المكسورة مؤخراً
-            if (data.getViolation(CheckType.NUKER) > 0) {
-                // ⭐ نزيد العداد
+            if (diff < 200 && lastLoc != null) {
+                double dist = current.distance(lastLoc);
+
+                // ⭐ بلوكين متباعدين > 2 في وقت < 200ms = Nuker
+                if (dist > 2.0) {
+                    flag(player, data, "nuker dist=" + MathUtil.round(dist, 2)
+                            + " time=" + diff + "ms");
+                    return;
+                }
+
+                // ⭐ بلوكين متتاليين — نزيد العداد
                 data.addViolation(CheckType.NUKER);
-                if (data.getViolation(CheckType.NUKER) > 5) {
-                    flag(player, data, "multi-break dist=" + MathUtil.round(dist, 2));
+
+                if (data.getViolation(CheckType.NUKER) >= MAX_BREAKS) {
+                    flag(player, data, "nuker rapid=" + data.getViolation(CheckType.NUKER) + " breaks");
+                    data.setViolation(CheckType.NUKER, 0);
+                }
+            } else {
+                // ⭐ انتهت النافذة — نصفّر إذا مر وقت
+                if (diff > 2000) {
+                    data.setViolation(CheckType.NUKER, 0);
                 }
             }
         }
+
+        data.setLastBlockBreakTime(now);
+        data.setLastBlockBreakLocation(current);
     }
 }
