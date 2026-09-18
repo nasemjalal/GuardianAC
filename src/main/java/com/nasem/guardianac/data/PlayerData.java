@@ -27,7 +27,6 @@ public class PlayerData {
     private long clickWindowStart;
     private Location lastAttackLocation;
 
-    // ⭐ KillAura — تتبع النظر
     private float currentYaw;
     private float previousYaw;
     private float currentPitch;
@@ -47,6 +46,7 @@ public class PlayerData {
     private long packetWindowStart;
 
     private boolean inventoryOpen;
+    private long lastInvOpenTime;
 
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
@@ -62,7 +62,6 @@ public class PlayerData {
     public UUID getUuid() { return uuid; }
     public String getName() { return name; }
 
-    // Violations
     public int getViolation(CheckType type) { return violations.getOrDefault(type, 0); }
     public void addViolation(CheckType type) {
         violations.put(type, getViolation(type) + 1);
@@ -87,7 +86,6 @@ public class PlayerData {
         }
     }
 
-    // Movement
     public Location getLastLocation() { return lastLocation; }
     public void setLastLocation(Location loc) { this.lastLocation = loc; }
     public Location getLastGroundLocation() { return lastGroundLocation; }
@@ -101,7 +99,6 @@ public class PlayerData {
     public void incrementGroundTicks() { this.groundTicks++; }
     public void resetGroundTicks() { this.groundTicks = 0; }
 
-    // Combat
     public long getLastAttackTime() { return lastAttackTime; }
     public void setLastAttackTime(long time) { this.lastAttackTime = time; }
     public int getClicksThisSecond() { return clicksThisSecond; }
@@ -117,7 +114,6 @@ public class PlayerData {
     public Location getLastAttackLocation() { return lastAttackLocation; }
     public void setLastAttackLocation(Location loc) { this.lastAttackLocation = loc; }
 
-    // ⭐ KillAura — النظر
     public float getCurrentYaw() { return currentYaw; }
     public void setCurrentYaw(float yaw) { this.currentYaw = yaw; }
     public float getPreviousYaw() { return previousYaw; }
@@ -129,7 +125,6 @@ public class PlayerData {
     public long getLastLookTime() { return lastLookTime; }
     public void setLastLookTime(long time) { this.lastLookTime = time; }
 
-    // Block
     public long getLastBlockBreakTime() { return lastBlockBreakTime; }
     public void setLastBlockBreakTime(long time) { this.lastBlockBreakTime = time; }
     public long getLastBlockPlaceTime() { return lastBlockPlaceTime; }
@@ -137,13 +132,11 @@ public class PlayerData {
     public Location getLastBlockBreakLocation() { return lastBlockBreakLocation; }
     public void setLastBlockBreakLocation(Location loc) { this.lastBlockBreakLocation = loc; }
 
-    // Velocity
     public long getLastVelocityTime() { return lastVelocityTime; }
     public void setLastVelocityTime(long time) { this.lastVelocityTime = time; }
     public boolean isPendingVelocity() { return pendingVelocity; }
     public void setPendingVelocity(boolean pending) { this.pendingVelocity = pending; }
 
-    // Timer
     public long getLastTimerCheck() { return lastTimerCheck; }
     public void setLastTimerCheck(long time) { this.lastTimerCheck = time; }
     public int getTimerBalance() { return timerBalance; }
@@ -157,7 +150,8 @@ public class PlayerData {
         this.packetCount = 0;
     }
 
-    // Inventory
     public boolean isInventoryOpen() { return inventoryOpen; }
     public void setInventoryOpen(boolean open) { this.inventoryOpen = open; }
+    public long getLastInvOpenTime() { return lastInvOpenTime; }
+    public void setLastInvOpenTime(long time) { this.lastInvOpenTime = time; }
 }

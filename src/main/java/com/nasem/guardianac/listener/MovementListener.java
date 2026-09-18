@@ -49,13 +49,24 @@ public class MovementListener implements Listener {
         runCheck(CheckType.PHASE, player, data, from, to);
         runCheck(CheckType.ELYTRA, player, data, from, to);
         runCheck(CheckType.TIMER, player, data, from, to);
-        runCheck(CheckType.INVENTORYMOVE, player, data, from, to);
 
-        // ⭐ Velocity — نفحص الحركة بعد knockback
+        // ⭐ InvWalk (يستخدم InvWalkCheck)
+        runInvWalk(player, data, from, to);
+
+        // ⭐ Velocity
         runVelocity(player, data, from, to);
 
         data.setLastLocation(to.clone());
         data.setLastMoveTime(System.currentTimeMillis());
+    }
+
+    private void runInvWalk(Player player, PlayerData data, Location from, Location to) {
+        Check check = plugin.getCheckManager().getCheck(CheckType.INVENTORYMOVE);
+        if (check == null || !check.isEnabled()) return;
+        try {
+            ((com.nasem.guardianac.check.impl.InvWalkCheck) check)
+                    .handle(player, data, from, to);
+        } catch (Exception ignored) {}
     }
 
     private void runVelocity(Player player, PlayerData data, Location from, Location to) {
@@ -99,9 +110,6 @@ public class MovementListener implements Listener {
                     break;
                 case TIMER:
                     ((com.nasem.guardianac.check.impl.TimerCheck) check).handle(player, data, from, to);
-                    break;
-                case INVENTORYMOVE:
-                    ((com.nasem.guardianac.check.impl.InventoryMoveCheck) check).handle(player, data, from, to);
                     break;
                 default:
                     break;

@@ -10,6 +10,7 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
+import com.nasem.guardianac.check.impl.InvWalkCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
 import com.nasem.guardianac.data.PlayerData;
 import org.bukkit.entity.Entity;
@@ -33,7 +34,9 @@ public class PacketListener {
                 PacketType.Play.Client.LOOK,
                 PacketType.Play.Client.FLYING,
                 PacketType.Play.Client.ARM_ANIMATION,
-                PacketType.Play.Client.USE_ENTITY) {
+                PacketType.Play.Client.USE_ENTITY,
+                PacketType.Play.Client.CLIENT_COMMAND,
+                PacketType.Play.Client.WINDOW_CLICK) {
 
             @Override
             public void onPacketReceiving(PacketEvent event) {
@@ -45,7 +48,7 @@ public class PacketListener {
 
                 PacketType type = event.getPacketType();
 
-                // ⭐⭐ مهم: نحدّث اتجاه النظر BEFORE ما يتعامل مع الباكت
+                // ⭐⭐ تتبع النظر (KillAura)
                 if (type == PacketType.Play.Client.POSITION_LOOK
                         || type == PacketType.Play.Client.LOOK) {
                     try {
@@ -53,7 +56,6 @@ public class PacketListener {
                         float yaw = packet.getFloat().read(0);
                         float pitch = packet.getFloat().read(1);
 
-                        // ⭐ نحفظ الاتجاه قبل التحديث
                         data.setPreviousYaw(data.getCurrentYaw());
                         data.setPreviousPitch(data.getCurrentPitch());
                         data.setCurrentYaw(yaw);
@@ -62,13 +64,39 @@ public class PacketListener {
                     } catch (Exception ignored) {}
                 }
 
+                // ⭐⭐ InvWalk — من CLIENT_COMMAND
+                if (type == PacketType.Play.Client.CLIENT_COMMAND) {
+                    try {
+                        PacketContainer packet = event.getPacket();
+                        EnumWrappers.ClientCommand action =
+                                packet.getClientCommands().read(0);
+
+                        // OPEN_INVENTORY = فتح الإنفنتوري
+                        if (action == EnumWrappers.ClientCommand.OPEN_INVENTORY) {
+                            data.setInventoryOpen(true);
+                            data.setLastInvOpenTime(System.currentTimeMillis());
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                // ⭐⭐ WINDOW_CLICK = تفاعل مع الإنفنتوري
+                if (type == PacketType.Play.Client.WINDOW_CLICK) {
+                    data.setInventoryOpen(true);
+                    data.setLastInvOpenTime(System.currentTimeMillis());
+                }
+
+                // ⭐ swing — KillAura
                 if (type == PacketType.Play.Client.ARM_ANIMATION) {
                     data.incrementClicks();
                     handleSwing(player, data);
-                } else if (type == PacketType.Play.Client.USE_ENTITY) {
+                }
+
+                // ⭐ USE_ENTITY — KillAura
+                else if (type == PacketType.Play.Client.USE_ENTITY) {
                     handleUseEntity(event, player, data);
                 }
 
+                // ⭐ packet counting — Timer
                 if (type == PacketType.Play.Client.POSITION
                         || type == PacketType.Play.Client.POSITION_LOOK
                         || type == PacketType.Play.Client.LOOK
@@ -82,9 +110,14 @@ public class PacketListener {
     }
 
     private void handleSwing(Player player, PlayerData data) {
-        Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
-        if (check instanceof KillAuraCheck && check.isEnabled()) {
-            ((KillAuraCheck) check).handleSwing(player, data);
+        Check killAura = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
+        if (killAura instanceof KillAuraCheck && killAura.isEnabled()) {
+            ((KillAuraCheck) killAura).handleSwing(player, data);
+        }
+
+        Check invWalk = pluginInstance.getCheckManager().getCheck(CheckType.INVENTORYMOVE);
+        if (invWalk instanceof InvWalkCheck && invWalk.isEnabled()) {
+            ((InvWalkCheck) invWalk).handleSwing(player, data);
         }
     }
 
