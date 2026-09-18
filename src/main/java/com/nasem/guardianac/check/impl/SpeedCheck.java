@@ -20,32 +20,60 @@ public class SpeedCheck extends Check {
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
-        // Skip if in creative / flying / gliding / riding
+        // ========== تجاهل الحالات الطبيعية ==========
+        
+        // 1. طيران / كريتف / سبكتيتور
         if (player.isFlying() || player.getAllowFlight()) return;
+        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
+        if (player.getGameMode() == org.bukkit.GameMode.SPECTATOR) return;
+
+        // 2. طيران بالإليترا
         if (player.isGliding()) return;
+
+        // 3. داخل مركبة
         if (player.isInsideVehicle()) return;
+
+        // 4. يسبح
         if (player.isSwimming()) return;
 
-        // Skip if recently damaged (knockback)
-        if (System.currentTimeMillis() - data.getLastVelocityTime() < 1500) return;
+        // 5. في الماء / الحمم
+        if (player.isInWater() || player.isInLava()) return;
 
-        // Skip if player teleported recently
-        if (data.getLastLocation() == null) return;
+        // ⭐ 6. مهم جداً: يتجاهل الحركة أثناء القفز
+        // اللاعب لما يقفز أثناء الجري يصير أسرع بشكل طبيعي
+        if (!player.isOnGround()) return;
+        
+        // ⭐ 7. إذا كان في الهواء خلال آخر ticks (قفز)
+        if (data.getAirTicks() > 0) return;
 
-        // Horizontal speed
+        // 8. إذا أخذ ضرر / knockback قريب
+        if (System.currentTimeMillis() - data.getLastVelocityTime() < 2000) return;
+
+        // 9. تأثيرات البوشن اللي تغيّر السرعة
+        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
+            return; // نتجاهل كامل — لأن البوشن يغير السرعة
+        }
+        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) {
+            return; // Jump boost يزيد السرعة
+        }
+
+        // 10. إذا كان على جليد / سلايم / بلوكات خاصة
+        if (isOnSpecialBlock(to)) return;
+
+        // ========== الحساب الفعلي ==========
+
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
         double speed = Math.sqrt(dx * dx + dz * dz);
 
-        // Skip if player is on ice/slime/etc (would increase speed legitimately)
-        if (isOnSpecialBlock(to)) return;
-
-        // Boost allowed speed if player has speed potion
+        // السماح بسرعة أعلى إذا كان يجري (sprint)
         double allowed = maxSpeed;
-        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
-            int amp = player.getPotionEffect(org.bukkit.potion.PotionEffectType.SPEED).getAmplifier();
-            allowed += 0.06 * (amp + 1);
+        if (player.isSprinting()) {
+            allowed *= 1.3; // Sprint يعطي 30% زيادة
         }
+
+        // إذا كان اللاعب على الأرض وثابت الحركة → تجاهل
+        if (speed < 0.01) return;
 
         if (speed > allowed) {
             flag(player, data, "speed=" + MathUtil.round(speed, 3) + " max=" + MathUtil.round(allowed, 3));
