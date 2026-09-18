@@ -4,6 +4,7 @@ import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 
 public class CriticalsCheck extends Check {
@@ -12,40 +13,60 @@ public class CriticalsCheck extends Check {
         super(plugin, CheckType.CRITICALS);
     }
 
+    /**
+     * Critical hit حقيقي يحتاج:
+     * - اللاعب ينزل (fallDistance > 0)
+     * - ما على الأرض
+     * - ما في الماء
+     * - ما يسبح
+     * - ما يستخدم درع (blocking)
+     *
+     * Criticals hack: يعطي critical بدون سقوط
+     */
     public void handle(Player attacker, PlayerData data) {
         if (!enabled) return;
 
+        GameMode gm = attacker.getGameMode();
+        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+
         if (attacker.getAllowFlight() || attacker.isFlying()) return;
+        if (attacker.isGliding()) return;
         if (attacker.isInsideVehicle()) return;
         if (attacker.isInWater() || attacker.isInLava()) return;
+        if (attacker.isSwimming()) return;
         if (attacker.isClimbing()) return;
+        if (attacker.isBlocking()) return;
+
         if (attacker.hasPotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS)) return;
 
-        // Critical hit conditions in vanilla:
-        // - falling (fallDistance > 0)
-        // - not on ground
-        // - not in water/lava
-        // - not riding
-        // - not on ladder/vine
-        // - not with blindness
-        // - not sprinting
-
-        double fallDist = attacker.getFallDistance();
+        // ⭐ اللاعب ضرب — هل Critical صحيح؟
         boolean onGround = attacker.isOnGround();
+        float fallDistance = attacker.getFallDistance();
+        boolean sprinting = attacker.isSprinting();
 
-        // A critical hit should only happen when falling AND not on ground
-        // If player is on ground AND has 0 fall distance, they can't crit
-        // But we can't directly check the crit — instead check that the crit hit happens
-        // This check works by: if the player is on ground and had no fall → flag
+        // Critical حقيقي: fallDistance > 0 AND NOT onGround AND NOT sprinting
+        // Criticals hack: onGround AND fallDistance == 0 (لكن يعطي critical)
 
-        // Detect suspicious: on ground + 0 fall distance but they attacked
-        // (this simple check assumes we're in the attack event already)
-        if (onGround && fallDist == 0 && !attacker.isSprinting()) {
-            // Might be legit — crits don't always happen
-            // Only flag if repeated pattern (we rely on VL system)
-            // Actually: only flag if fallDistance was suspicious
-            // Comment: to reduce false positives, only flag when some indicator present
-            // For now, skip — requires more packet info
+        // ⭐ نتحقق إذا اللاعب على الأرض + fallDistance 0 = ما يقدر يسوي critical
+        if (onGround && fallDistance == 0 && !sprinting) {
+            // ما نقدر نتحقق من الـ damage الفعلي من Bukkit API
+            // لكن نستخدم pattern: تكرار الضربات بدون قفز
+
+            long now = System.currentTimeMillis();
+            long last = data.getLastAttackTime();
+
+            if (last > 0 && (now - last) < 400) {
+                // ⭐ ضربات سريعة + ما يقفز = Criticals hack
+                int count = data.getViolation(CheckType.CRITICALS);
+
+                // نسمح بعدد معين
+                if (count >= 3) {
+                    flag(attacker, data, "onGround fallDist=0 spam");
+                } else {
+                    // نزيد العداد بدون flag
+                    data.addViolation(CheckType.CRITICALS);
+                }
+            }
         }
     }
 }

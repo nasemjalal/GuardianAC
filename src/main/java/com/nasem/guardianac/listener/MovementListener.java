@@ -25,14 +25,12 @@ public class MovementListener implements Listener {
         Location from = event.getFrom();
         Location to = event.getTo();
 
-        // Ignore if no actual movement
         if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) {
             return;
         }
 
         PlayerData data = plugin.getPlayerDataManager().get(player);
 
-        // Track ground/air state
         if (player.isOnGround()) {
             data.incrementGroundTicks();
             data.resetAirTicks();
@@ -42,7 +40,6 @@ public class MovementListener implements Listener {
             data.resetGroundTicks();
         }
 
-        // Run movement checks
         runCheck(CheckType.SPEED, player, data, from, to);
         runCheck(CheckType.FLIGHT, player, data, from, to);
         runCheck(CheckType.NOFALL, player, data, from, to);
@@ -54,9 +51,20 @@ public class MovementListener implements Listener {
         runCheck(CheckType.TIMER, player, data, from, to);
         runCheck(CheckType.INVENTORYMOVE, player, data, from, to);
 
-        // Update last location
+        // ⭐ Velocity — نفحص الحركة بعد knockback
+        runVelocity(player, data, from, to);
+
         data.setLastLocation(to.clone());
         data.setLastMoveTime(System.currentTimeMillis());
+    }
+
+    private void runVelocity(Player player, PlayerData data, Location from, Location to) {
+        Check check = plugin.getCheckManager().getCheck(CheckType.VELOCITY);
+        if (check == null || !check.isEnabled()) return;
+        try {
+            ((com.nasem.guardianac.check.impl.VelocityCheck) check)
+                    .handleMovement(player, data, from, to);
+        } catch (Exception ignored) {}
     }
 
     private void runCheck(CheckType type, Player player, PlayerData data, Location from, Location to) {
@@ -98,8 +106,6 @@ public class MovementListener implements Listener {
                 default:
                     break;
             }
-        } catch (Exception ex) {
-            // Silently ignore
-        }
+        } catch (Exception ignored) {}
     }
 }

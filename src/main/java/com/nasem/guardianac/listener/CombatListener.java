@@ -12,8 +12,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerItemHeldEvent;
 
 public class CombatListener implements Listener {
 
@@ -28,18 +26,9 @@ public class CombatListener implements Listener {
         if (!(event.getDamager() instanceof Player)) return;
         Player attacker = (Player) event.getDamager();
         Entity victim = event.getEntity();
-
         PlayerData data = plugin.getPlayerDataManager().get(attacker);
 
-        // Track attack time & clicks
-        long now = System.currentTimeMillis();
-        data.setLastAttackTime(now);
-        data.incrementClicks();
-        data.setLastAttackLocation(attacker.getLocation().clone());
-
-        // Run combat checks
         runReach(attacker, victim, data);
-        runKillAura(attacker, victim, data);
         runAutoClicker(attacker, data);
         runCriticals(attacker, data);
         runWallhack(attacker, victim, data);
@@ -64,22 +53,9 @@ public class CombatListener implements Listener {
         Player player = event.getPlayer();
         PlayerData data = plugin.getPlayerDataManager().get(player);
 
-        long now = System.currentTimeMillis();
-        data.setLastBlockPlaceTime(now);
-
-        runFastPlace(player, data);
+        // ⭐ FastPlace يُفحص الآن في PacketListener (packet-level)
         runBlockReachPlace(player, event, data);
         runScaffold(player, event, data);
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onInteract(PlayerInteractEvent event) {
-        // Currently unused, but kept for future checks (e.g., ghost blocks)
-    }
-
-    @EventHandler
-    public void onItemHeld(PlayerItemHeldEvent event) {
-        // Could be used by NoSlow / inventory checks
     }
 
     // ============ Check runners ============
@@ -89,14 +65,6 @@ public class CombatListener implements Listener {
         if (check == null || !check.isEnabled()) return;
         try {
             ((com.nasem.guardianac.check.impl.ReachCheck) check).handle(attacker, victim, data);
-        } catch (Exception ignored) {}
-    }
-
-    private void runKillAura(Player attacker, Entity victim, PlayerData data) {
-        Check check = plugin.getCheckManager().getCheck(CheckType.KILLAURA);
-        if (check == null || !check.isEnabled()) return;
-        try {
-            ((com.nasem.guardianac.check.impl.KillAuraCheck) check).handle(attacker, victim, data);
         } catch (Exception ignored) {}
     }
 
@@ -145,14 +113,6 @@ public class CombatListener implements Listener {
         if (check == null || !check.isEnabled()) return;
         try {
             ((com.nasem.guardianac.check.impl.BlockReachCheck) check).handleBreak(player, event, data);
-        } catch (Exception ignored) {}
-    }
-
-    private void runFastPlace(Player player, PlayerData data) {
-        Check check = plugin.getCheckManager().getCheck(CheckType.FASTPLACE);
-        if (check == null || !check.isEnabled()) return;
-        try {
-            ((com.nasem.guardianac.check.impl.FastPlaceCheck) check).handle(player, data);
         } catch (Exception ignored) {}
     }
 

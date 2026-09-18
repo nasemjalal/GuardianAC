@@ -12,25 +12,37 @@ public class FastPlaceCheck extends Check {
 
     public FastPlaceCheck(GuardianAC plugin) {
         super(plugin, CheckType.FASTPLACE);
-        this.minDelay = plugin.getConfig().getLong("checks.fastplace.min-delay", 100);
+        this.minDelay = plugin.getConfig().getLong("checks.fastplace.min-delay", 80);
     }
 
+    /**
+     * ⭐ من Bukkit — يبقى للتوافق
+     */
     public void handle(Player player, PlayerData data) {
         if (!enabled) return;
-
         if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
 
         long now = System.currentTimeMillis();
         long last = data.getLastBlockPlaceTime();
 
-        // First place is always fine
+        data.setLastBlockPlaceTime(now);
+
         if (last == 0) return;
 
         long diff = now - last;
 
-        // If diff is very small AND player is not spam-clicking (holding down)
         if (diff < minDelay && diff > 0) {
-            flag(player, data, "delay=" + diff + "ms");
+            flag(player, data, "bukkit place delay=" + diff + "ms");
         }
+    }
+
+    /**
+     * ⭐ من ProtocolLib — دقة أعلى
+     */
+    public void handlePacket(Player player, PlayerData data, long diff) {
+        if (!enabled) return;
+        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
+
+        flag(player, data, "packet place delay=" + diff + "ms < " + minDelay + "ms");
     }
 }

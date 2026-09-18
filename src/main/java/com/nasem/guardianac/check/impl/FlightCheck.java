@@ -4,8 +4,10 @@ import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
+import com.nasem.guardianac.util.MathUtil;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public class FlightCheck extends Check {
@@ -14,7 +16,7 @@ public class FlightCheck extends Check {
 
     public FlightCheck(GuardianAC plugin) {
         super(plugin, CheckType.FLIGHT);
-        this.maxAirTicks = plugin.getConfig().getInt("checks.flight.max-air-ticks", 20);
+        this.maxAirTicks = plugin.getConfig().getInt("checks.flight.max-air-ticks", 15);
     }
 
     public void handle(Player player, PlayerData data, Location from, Location to) {
@@ -22,72 +24,81 @@ public class FlightCheck extends Check {
 
         // ========== تجاهل حالات كثيرة ==========
 
-        // 1. ⭐ كريتف / سبكتيتور — يقدر يطير بشكل شرعي
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
 
-        // 2. طيران مسموح به (allow flight)
         if (player.getAllowFlight() || player.isFlying()) return;
-
-        // 3. ⭐ طيران بالإليترا
         if (player.isGliding()) return;
-
-        // 4. داخل مركبة
         if (player.isInsideVehicle()) return;
 
-        // 5. ⭐ في الماء / الحمم (يشمل السباحة)
-        if (player.isInWater() || player.isInLava()) return;
-
-        // 6. ⭐ كان في الماء قبل لحظات (الخروج من الماء)
-        Location belowFeet = to.clone().subtract(0, 1, 0);
-        Location belowFeet2 = to.clone().subtract(0, 2, 0);
-        if (isWaterOrLava(belowFeet) || isWaterOrLava(belowFeet2)) return;
-
-        // 7. ⭐ وضع السباحة
+        // ⭐⭐ مهم: نفحص الماء/الحمم بدقة (مو بس isInWater/isInLava)
         if (player.isSwimming()) return;
+        if (isInLiquidAround(to)) return;
 
-        // 8. ⭐ بوشن Levitation / Slow Falling
+        // بوشن
         if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.LEVITATION)) return;
         if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SLOW_FALLING)) return;
 
-        // 9. ⭐ أخذ knockback قريب (يصير في الهواء)
+        // Knockback
         if (System.currentTimeMillis() - data.getLastVelocityTime() < 2000) return;
 
-        // 10. ⭐ القفز الطبيعي — إذا اللاعب يقفز من الأرض
-        // نسمح بعدد air ticks أكبر بكثير قبل ما نعتبره طيران
-        // القفز الطبيعي: ~12 tick في الهواء
-        // مع lag: ~20 tick
-        // مع قفز من مكان عالي: أكثر
-        int airTicks = data.getAirTicks();
-        int allowedAirTicks = maxAirTicks;
-
-        // إذا اللاعب كان ينزل من مكان عالي (y أقل من قبل)، نسمح أكثر
-        if (data.getLastGroundLocation() != null) {
-            double dropFrom = data.getLastGroundLocation().getY() - to.getY();
-            if (dropFrom > 2) {
-                // يسقط من مكان عالي — طبيعي
-                return;
-            }
-        }
+        // ⭐ Net ضعيف
+        if (player.getPing() > 200) return;
 
         // ========== الكشف الفعلي ==========
 
-        // الشرط: air ticks كثيرة + يرتفع لفوق (dy > 0)
+        int airTicks = data.getAirTicks();
         double dy = to.getY() - from.getY();
 
-        // ⭐ يرتفع لفوق بدون سبب = طيران
-        // لكن: نسمح بالقفز الطبيعي (dy صغير + airTicks معتدل)
-        if (airTicks > allowedAirTicks && dy > 0.1) {
-            flag(player, data, "airTicks=" + airTicks + " dy=" + Math.round(dy * 100) / 100.0);
+        // ⭐⭐ في النيثر: السقف 128 — نفحص إذا يرتفع بسرعة
+        World world = player.getWorld();
+        boolean isNether = world.getEnvironment() == World.Environment.NETHER;
+
+        if (airTicks > maxAirTicks) {
+            // 1. يرتفع لفوق (dy > 0.05) = طيران
+            if (dy > 0.05) {
+                flag(player, data, "airTicks=" + airTicks
+                        + " dy=" + MathUtil.round(dy, 3)
+                        + " world=" + world.getEnvironment().name());
+                return;
+            }
+
+            // 2. ثابت في الهواء (hover)
+            if (Math.abs(dy) < 0.01 && airTicks > maxAirTicks * 2) {
+                flag(player, data, "hover airTicks=" + airTicks);
+                return;
+            }
+
+            // ⭐ 3. في النيثر: airTicks أكثر من 30 = طيران
+            if (isNether && airTicks > 30) {
+                flag(player, data, "nether airTicks=" + airTicks
+                        + " dy=" + MathUtil.round(dy, 3));
+            }
         }
     }
 
-    private boolean isWaterOrLava(Location loc) {
+    /**
+     * ⭐ فحص السوائل حول اللاعب بدقة (5 مواقع)
+     */
+    private boolean isInLiquidAround(Location loc) {
         if (loc.getWorld() == null) return false;
-        org.bukkit.Material mat = loc.getBlock().getType();
-        String n = mat.name();
-        return n.equals("WATER") || n.equals("LAVA")
-                || n.equals("KELP") || n.equals("KELP_PLANT")
-                || n.equals("SEAGRASS") || n.equals("BUBBLE_COLUMN");
+
+        Location[] checks = {
+                loc.clone(),
+                loc.clone().add(0, 1, 0),
+                loc.clone().add(0, 0.5, 0),
+                loc.clone().subtract(0, 1, 0),
+                loc.clone().add(0, -0.5, 0)
+        };
+
+        for (Location check : checks) {
+            String n = check.getBlock().getType().name();
+            if (n.equals("WATER") || n.equals("LAVA")
+                    || n.equals("KELP") || n.equals("KELP_PLANT")
+                    || n.equals("SEAGRASS") || n.equals("BUBBLE_COLUMN")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

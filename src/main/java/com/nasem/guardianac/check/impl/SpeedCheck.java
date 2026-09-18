@@ -5,7 +5,9 @@ import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
 import com.nasem.guardianac.util.MathUtil;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 public class SpeedCheck extends Check {
@@ -20,71 +22,97 @@ public class SpeedCheck extends Check {
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
-        // ========== تجاهل الحالات الطبيعية ==========
-        
-        // 1. طيران / كريتف / سبكتيتور
+        // ========== تجاهل حالات كثيرة ==========
+
+        // 1. GameMode
+        GameMode gm = player.getGameMode();
+        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+
+        // 2. طيران / إليترا / مركبة
         if (player.isFlying() || player.getAllowFlight()) return;
-        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
-        if (player.getGameMode() == org.bukkit.GameMode.SPECTATOR) return;
-
-        // 2. طيران بالإليترا
         if (player.isGliding()) return;
-
-        // 3. داخل مركبة
         if (player.isInsideVehicle()) return;
 
-        // 4. يسبح
+        // 3. السباحة والماء
         if (player.isSwimming()) return;
-
-        // 5. في الماء / الحمم
         if (player.isInWater() || player.isInLava()) return;
+        if (isInWaterAround(to)) return;
 
-        // ⭐ 6. مهم جداً: يتجاهل الحركة أثناء القفز
-        // اللاعب لما يقفز أثناء الجري يصير أسرع بشكل طبيعي
+        // 4. ⭐ Net ضعيف — نتجاهل إذا ping > 200
+        int ping = player.getPing();
+        if (ping > 200) return;
+
+        // 5. ⭐ Sprint طبيعي — نسمح بسرعة أعلى
+        boolean sprinting = player.isSprinting();
+
+        // 6. ⭐ الهواء (قفز)
         if (!player.isOnGround()) return;
-        
-        // ⭐ 7. إذا كان في الهواء خلال آخر ticks (قفز)
         if (data.getAirTicks() > 0) return;
 
-        // 8. إذا أخذ ضرر / knockback قريب
+        // 7. Knockback حديث
         if (System.currentTimeMillis() - data.getLastVelocityTime() < 2000) return;
 
-        // 9. تأثيرات البوشن اللي تغيّر السرعة
-        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
-            return; // نتجاهل كامل — لأن البوشن يغير السرعة
-        }
-        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) {
-            return; // Jump boost يزيد السرعة
-        }
+        // 8. بوشن
+        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) return;
+        if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) return;
 
-        // 10. إذا كان على جليد / سلايم / بلوكات خاصة
+        // 9. بلوكات خاصة (جليد، سلايم)
         if (isOnSpecialBlock(to)) return;
 
-        // ========== الحساب الفعلي ==========
+        // 10. ⭐⭐ مهم: إذا تفاعل مع بلوك حديث (فتح باب، زر، صندوق)
+        // ننتظر 500ms قبل ما نفحصه
+        long lastInteract = data.getLastBlockPlaceTime();
+        if (System.currentTimeMillis() - lastInteract < 500) return;
+
+        // ========== الحساب ==========
 
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
         double speed = Math.sqrt(dx * dx + dz * dz);
 
-        // السماح بسرعة أعلى إذا كان يجري (sprint)
-        double allowed = maxSpeed;
-        if (player.isSprinting()) {
-            allowed *= 1.3; // Sprint يعطي 30% زيادة
-        }
-
-        // إذا كان اللاعب على الأرض وثابت الحركة → تجاهل
         if (speed < 0.01) return;
 
-        if (speed > allowed) {
-            flag(player, data, "speed=" + MathUtil.round(speed, 3) + " max=" + MathUtil.round(allowed, 3));
+        // ⭐ Sprint يسمح بسرعة أعلى (40% زيادة)
+        double allowed = maxSpeed;
+        if (sprinting) {
+            allowed *= 1.4;
         }
+
+        // ⭐ نتجاهل الفروق الصغيرة
+        if (speed > allowed + 0.05) {
+            flag(player, data, "speed=" + MathUtil.round(speed, 3)
+                    + " max=" + MathUtil.round(allowed, 3)
+                    + " ping=" + ping);
+        }
+    }
+
+    private boolean isInWaterAround(Location loc) {
+        if (loc.getWorld() == null) return false;
+        Location[] checks = {
+                loc.clone(),
+                loc.clone().add(0, 1, 0),
+                loc.clone().add(0, 0.5, 0),
+                loc.clone().subtract(0, 1, 0)
+        };
+        for (Location check : checks) {
+            if (isLiquid(check.getBlock().getType())) return true;
+        }
+        return false;
+    }
+
+    private boolean isLiquid(Material mat) {
+        String n = mat.name();
+        return n.equals("WATER") || n.equals("LAVA")
+                || n.equals("KELP") || n.equals("KELP_PLANT")
+                || n.equals("SEAGRASS") || n.equals("BUBBLE_COLUMN");
     }
 
     private boolean isOnSpecialBlock(Location loc) {
         if (loc.getWorld() == null) return false;
-        org.bukkit.Material type = loc.clone().subtract(0, 1, 0).getBlock().getType();
+        Material type = loc.clone().subtract(0, 1, 0).getBlock().getType();
         String n = type.name();
-        return n.contains("ICE") || n.contains("SLIME") || n.contains("PACKED_ICE")
-                || n.contains("BLUE_ICE") || n.contains("FROSTED_ICE");
+        return n.contains("ICE") || n.contains("SLIME")
+                || n.contains("PACKED_ICE") || n.contains("BLUE_ICE")
+                || n.contains("FROSTED_ICE");
     }
 }

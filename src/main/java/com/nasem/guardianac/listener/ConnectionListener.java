@@ -24,31 +24,26 @@ public class ConnectionListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        // Create player data
-        plugin.getPlayerDataManager().get(player);
+        plugin.getPlayerDataManager().get(event.getPlayer());
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        Player player = event.getPlayer();
-        plugin.getPlayerDataManager().remove(player);
+        plugin.getPlayerDataManager().remove(event.getPlayer());
     }
 
     @EventHandler
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
-        PlayerData data = plugin.getPlayerDataManager().get(player);
-        data.setInventoryOpen(true);
+        plugin.getPlayerDataManager().get(player).setInventoryOpen(true);
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
-        PlayerData data = plugin.getPlayerDataManager().get(player);
-        data.setInventoryOpen(false);
+        plugin.getPlayerDataManager().get(player).setInventoryOpen(false);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -57,7 +52,7 @@ public class ConnectionListener implements Listener {
         Player player = (Player) event.getEntity();
         PlayerData data = plugin.getPlayerDataManager().get(player);
 
-        // Check Velocity (AntiKnockback) — see if the player takes knockback
+        // ⭐ Velocity (AntiKnockback)
         Check velocity = plugin.getCheckManager().getCheck(CheckType.VELOCITY);
         if (velocity != null && velocity.isEnabled()) {
             try {
