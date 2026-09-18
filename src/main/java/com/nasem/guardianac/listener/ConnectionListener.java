@@ -9,11 +9,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
 public class ConnectionListener implements Listener {
 
@@ -45,6 +45,37 @@ public class ConnectionListener implements Listener {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
         plugin.getPlayerDataManager().get(player).setInventoryOpen(false);
+    }
+
+    /**
+     * ⭐⭐⭐ الأهم — InventoryClick
+     * يشتغل لما اللاعب ينقر داخل الإنفنتوري (نقل شي من slot لـ slot)
+     * لا يشتغل لما يأخذ شي من الأرض
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
+        PlayerData data = plugin.getPlayerDataManager().get(player);
+
+        // ⭐ نتجاهل النقرات على الأرض
+        if (event.getClickedInventory() == null) return;
+        if (!event.getClickedInventory().equals(player.getInventory())
+                && !event.getView().getTopInventory().equals(event.getClickedInventory())) {
+            // هذا inventory آخر — نتجاهله
+            return;
+        }
+
+        // ⭐ نتحقق إذا اللاعب يستخدم Shift-Click أو سحب
+        // هذا هو اللي يصير لما ينقل شي
+
+        Check check = plugin.getCheckManager().getCheck(CheckType.INVENTORYMOVE);
+        if (check != null && check.isEnabled()) {
+            try {
+                ((com.nasem.guardianac.check.impl.InvWalkCheck) check)
+                        .handleClick(player, data);
+            } catch (Exception ignored) {}
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

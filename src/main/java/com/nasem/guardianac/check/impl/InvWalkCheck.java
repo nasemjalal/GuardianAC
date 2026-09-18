@@ -11,13 +11,18 @@ import org.bukkit.entity.Player;
 
 public class InvWalkCheck extends Check {
 
-    // ⭐⭐ الوقت اللي بعد فتح الإنفنتوري — نعتبره مفتوح
-    private static final long INV_OPEN_WINDOW_MS = 3000;
+    // ⭐⭐ نافذة زمنية — إذا تحرك في آخر 500ms
+    private static final long MOVE_WINDOW_MS = 500;
+    // ⭐⭐ الحد الأدنى للسرعة — 0.1
+    private static final double MIN_MOVE_SPEED = 0.1;
 
     public InvWalkCheck(GuardianAC plugin) {
         super(plugin, CheckType.INVENTORYMOVE);
     }
 
+    /**
+     * ⭐ من PlayerMoveEvent — يتحرك والإنفنتوري مفتوح
+     */
     public void handle(Player player, PlayerData data, Location from, Location to) {
         if (!enabled) return;
 
@@ -27,41 +32,69 @@ public class InvWalkCheck extends Check {
         if (player.isFlying() || player.getAllowFlight()) return;
         if (player.isGliding()) return;
 
-        // ⭐⭐⭐ الطريقة الجديدة: نتحقق إذا الإنفنتوري مفتوح
-        // إما من InventoryOpenEvent، أو من ClientCommand
-        boolean invOpen = data.isInventoryOpen();
+        if (!data.isInventoryOpen()) return;
 
-        if (!invOpen) {
-            // ⭐ ما مفتوح — نتجاهل
-            return;
-        }
-
-        // ⭐ نحسب الحركة
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
         double speed = Math.sqrt(dx * dx + dz * dz);
 
-        // ⭐ إذا تحرك بشكل ملحوظ
         if (speed > 0.05) {
-            flag(player, data, "move=" + MathUtil.round(speed, 3));
+            flag(player, data, "move while open speed=" + MathUtil.round(speed, 3));
         }
     }
 
     /**
-     * ⭐ swing check — إذا اللاعب يضرب و الإنفنتوري مفتوح
+     * ⭐ swing — يضرب والإنفنتوري مفتوح
      */
     public void handleSwing(Player player, PlayerData data) {
         if (!enabled) return;
 
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
-
-        // ⭐ إذا الإنفنتوري مفتوح + swing = Wurst InvWalk
         if (!data.isInventoryOpen()) return;
 
-        long lastInvOpen = data.getLastInvOpenTime();
-        if (System.currentTimeMillis() - lastInvOpen < INV_OPEN_WINDOW_MS) {
-            flag(player, data, "swing while inventory open");
+        flag(player, data, "swing while inventory open");
+    }
+
+    /**
+     * ⭐⭐⭐ الأهم — InventoryClick
+     * اللاعب حرّك شي في الإنفنتوري + يتحرك = InvWalk
+     */
+    public void handleClick(Player player, PlayerData data) {
+        if (!enabled) return;
+
+        GameMode gm = player.getGameMode();
+        if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
+        if (player.isInsideVehicle()) return;
+
+        long now = System.currentTimeMillis();
+        long lastActualMove = data.getLastActualMoveTime();
+        double moveSpeed = data.getLastMovementSpeed();
+
+        // ⭐⭐ المنطق:
+        // 1. اللاعب حرّك شي في الإنفنتوري (handleClick)
+        // 2. كان يتحرك في آخر 500ms (lastActualMove)
+        // 3. السرعة > 0.1 (moveSpeed)
+
+        long timeSinceMove = now - lastActualMove;
+
+        if (timeSinceMove < MOVE_WINDOW_MS && moveSpeed > MIN_MOVE_SPEED) {
+            flag(player, data, "click while moving speed=" + MathUtil.round(moveSpeed, 3)
+                    + " time=" + timeSinceMove + "ms");
+            return;
+        }
+
+        // ⭐⭐ الطريقة الثانية: نفحص الحركة الحالية مباشرة
+        Location lastLoc = data.getLastLocation();
+        if (lastLoc == null) return;
+
+        Location current = player.getLocation();
+        double dx = current.getX() - lastLoc.getX();
+        double dz = current.getZ() - lastLoc.getZ();
+        double speed = Math.sqrt(dx * dx + dz * dz);
+
+        if (speed > MIN_MOVE_SPEED) {
+            flag(player, data, "click while current moving speed=" + MathUtil.round(speed, 3));
         }
     }
 }

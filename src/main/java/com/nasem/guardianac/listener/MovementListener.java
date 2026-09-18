@@ -25,11 +25,22 @@ public class MovementListener implements Listener {
         Location from = event.getFrom();
         Location to = event.getTo();
 
+        // ⭐ نحسب سرعة الحركة
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        double speed = Math.sqrt(dx * dx + dz * dz);
+
         if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) {
             return;
         }
 
         PlayerData data = plugin.getPlayerDataManager().get(player);
+
+        // ⭐⭐ نحفظ سرعة الحركة الحالية
+        data.setLastMovementSpeed(speed);
+        if (speed > 0.05) {
+            data.setLastActualMoveTime(System.currentTimeMillis());
+        }
 
         if (player.isOnGround()) {
             data.incrementGroundTicks();
@@ -50,10 +61,7 @@ public class MovementListener implements Listener {
         runCheck(CheckType.ELYTRA, player, data, from, to);
         runCheck(CheckType.TIMER, player, data, from, to);
 
-        // ⭐ InvWalk (يستخدم InvWalkCheck)
         runInvWalk(player, data, from, to);
-
-        // ⭐ Velocity
         runVelocity(player, data, from, to);
 
         data.setLastLocation(to.clone());

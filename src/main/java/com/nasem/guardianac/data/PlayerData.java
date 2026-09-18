@@ -48,6 +48,10 @@ public class PlayerData {
     private boolean inventoryOpen;
     private long lastInvOpenTime;
 
+    // ⭐⭐ جديد — تتبع حركة اللاعب في آخر 500ms
+    private double lastMovementSpeed;
+    private long lastActualMoveTime;
+
     public PlayerData(UUID uuid, String name) {
         this.uuid = uuid;
         this.name = name;
@@ -154,4 +158,10 @@ public class PlayerData {
     public void setInventoryOpen(boolean open) { this.inventoryOpen = open; }
     public long getLastInvOpenTime() { return lastInvOpenTime; }
     public void setLastInvOpenTime(long time) { this.lastInvOpenTime = time; }
+
+    // ⭐⭐ جديد
+    public double getLastMovementSpeed() { return lastMovementSpeed; }
+    public void setLastMovementSpeed(double speed) { this.lastMovementSpeed = speed; }
+    public long getLastActualMoveTime() { return lastActualMoveTime; }
+    public void setLastActualMoveTime(long time) { this.lastActualMoveTime = time; }
 }
