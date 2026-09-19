@@ -27,6 +27,9 @@ public class PlayerData {
     private long clickWindowStart;
     private Location lastAttackLocation;
 
+    private long lastSwingTime;
+    private long lastEntityAttackTime;
+
     private float currentYaw;
     private float previousYaw;
     private float currentPitch;
@@ -41,8 +44,8 @@ public class PlayerData {
     private int breakCountInSecond;
     private long breakWindowStart;
 
-    // ⭐⭐⭐ Nuker cooldown
     private long lastNukerFlagTime;
+    private long lastFastBreakFlagTime;
 
     private long lastVelocityTime;
     private boolean pendingVelocity;
@@ -125,6 +128,11 @@ public class PlayerData {
     public Location getLastAttackLocation() { return lastAttackLocation; }
     public void setLastAttackLocation(Location loc) { this.lastAttackLocation = loc; }
 
+    public long getLastSwingTime() { return lastSwingTime; }
+    public void setLastSwingTime(long time) { this.lastSwingTime = time; }
+    public long getLastEntityAttackTime() { return lastEntityAttackTime; }
+    public void setLastEntityAttackTime(long time) { this.lastEntityAttackTime = time; }
+
     public float getCurrentYaw() { return currentYaw; }
     public void setCurrentYaw(float yaw) { this.currentYaw = yaw; }
     public float getPreviousYaw() { return previousYaw; }
@@ -152,11 +160,16 @@ public class PlayerData {
     public long getBreakWindowStart() { return breakWindowStart; }
     public void setBreakWindowStart(long time) { this.breakWindowStart = time; }
 
-    // ⭐⭐⭐ Nuker cooldown
     public long getLastNukerFlagTime() { return lastNukerFlagTime; }
     public void setLastNukerFlagTime(long time) { this.lastNukerFlagTime = time; }
     public boolean isNukerActive() {
         return System.currentTimeMillis() - lastNukerFlagTime < 3000;
+    }
+
+    public long getLastFastBreakFlagTime() { return lastFastBreakFlagTime; }
+    public void setLastFastBreakFlagTime(long time) { this.lastFastBreakFlagTime = time; }
+    public boolean isFastBreakActive() {
+        return System.currentTimeMillis() - lastFastBreakFlagTime < 2000;
     }
 
     public long getLastVelocityTime() { return lastVelocityTime; }
