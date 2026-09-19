@@ -4,17 +4,17 @@ import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
-import com.nasem.guardianac.util.MathUtil;
 import org.bukkit.GameMode;
-import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.potion.PotionEffectType;
 
 public class NukerCheck extends Check {
 
-    // ⭐ عدد البلوكات في الثانية
     private static final long WINDOW_MS = 1000;
-    private static final int MAX_BLOCKS = 4;
+    private static final int MAX_BLOCKS = 5;
 
     public NukerCheck(GuardianAC plugin) {
         super(plugin, CheckType.NUKER);
@@ -24,43 +24,48 @@ public class NukerCheck extends Check {
         if (!enabled) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
 
+        // ⭐⭐⭐ نتجاهل أي أداة مطوّرة
+        if (hasEnchantedTool(player)) return;
+
         long now = System.currentTimeMillis();
-        long last = data.getLastBlockBreakTime();
+        long windowStart = data.getBreakWindowStart();
 
-        // ⭐⭐⭐ الطريقة الجديدة: نعد كسرات في الثانية
-        long lastActualBreak = data.getLastActualMoveTime();
-        if (lastActualBreak == 0) {
-            data.setLastActualMoveTime(now);
-            data.setFastPlaceStreak(1);
+        if (now - windowStart > WINDOW_MS) {
+            data.setBreakWindowStart(now);
+            data.setBreakCountInSecond(1);
             return;
         }
 
-        long windowTime = now - lastActualBreak;
+        int count = data.getBreakCountInSecond() + 1;
+        data.setBreakCountInSecond(count);
 
-        // ⭐ إذا مر أكثر من ثانية → نصفّر
-        if (windowTime > WINDOW_MS) {
-            data.setLastActualMoveTime(now);
-            data.setFastPlaceStreak(1);
-            return;
-        }
-
-        // ⭐ نزيد العداد
-        int count = data.getFastPlaceStreak() + 1;
-        data.setFastPlaceStreak(count);
-
-        // ⭐⭐⭐ إذا 4+ بلوكات في ثانية → flag
-        if (count > MAX_BLOCKS) {
+        if (count >= MAX_BLOCKS) {
             flag(player, data, "nuker " + count + " blocks/sec");
-            data.setFastPlaceStreak(0);
-            data.setLastActualMoveTime(now);
+            data.setLastNukerFlagTime(now);
+            data.setBreakCountInSecond(0);
+            data.setBreakWindowStart(now);
         }
     }
 
     public void handlePacket(Player player, PlayerData data, double dist, long timeDiff) {
         if (!enabled) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
+        if (hasEnchantedTool(player)) return;
 
-        flag(player, data, "nuker dist=" + MathUtil.round(dist, 2)
-                + " in " + timeDiff + "ms");
+        if (dist > 3.0) {
+            flag(player, data, "nuker dist=" + Math.round(dist * 10) / 10.0);
+            data.setLastNukerFlagTime(System.currentTimeMillis());
+        }
+    }
+
+    private boolean hasEnchantedTool(Player player) {
+        try {
+            ItemStack item = player.getInventory().getItemInMainHand();
+            if (item == null || item.getType() == Material.AIR) return false;
+            if (!item.getEnchantments().isEmpty()) return true;
+            if (player.hasPotionEffect(PotionEffectType.HASTE)) return true;
+            if (player.hasPotionEffect(PotionEffectType.CONDUIT_POWER)) return true;
+        } catch (Exception ignored) {}
+        return false;
     }
 }

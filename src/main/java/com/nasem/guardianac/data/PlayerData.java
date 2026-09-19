@@ -38,6 +38,11 @@ public class PlayerData {
     private Location lastBlockBreakLocation;
     private Location lastBlockPlaceLocation;
     private int fastPlaceStreak;
+    private int breakCountInSecond;
+    private long breakWindowStart;
+
+    // ⭐⭐⭐ Nuker cooldown
+    private long lastNukerFlagTime;
 
     private long lastVelocityTime;
     private boolean pendingVelocity;
@@ -62,6 +67,7 @@ public class PlayerData {
         }
         this.clickWindowStart = System.currentTimeMillis();
         this.packetWindowStart = System.currentTimeMillis();
+        this.breakWindowStart = System.currentTimeMillis();
     }
 
     public UUID getUuid() { return uuid; }
@@ -140,6 +146,18 @@ public class PlayerData {
     public void setLastBlockPlaceLocation(Location loc) { this.lastBlockPlaceLocation = loc; }
     public int getFastPlaceStreak() { return fastPlaceStreak; }
     public void setFastPlaceStreak(int streak) { this.fastPlaceStreak = streak; }
+
+    public int getBreakCountInSecond() { return breakCountInSecond; }
+    public void setBreakCountInSecond(int count) { this.breakCountInSecond = count; }
+    public long getBreakWindowStart() { return breakWindowStart; }
+    public void setBreakWindowStart(long time) { this.breakWindowStart = time; }
+
+    // ⭐⭐⭐ Nuker cooldown
+    public long getLastNukerFlagTime() { return lastNukerFlagTime; }
+    public void setLastNukerFlagTime(long time) { this.lastNukerFlagTime = time; }
+    public boolean isNukerActive() {
+        return System.currentTimeMillis() - lastNukerFlagTime < 3000;
+    }
 
     public long getLastVelocityTime() { return lastVelocityTime; }
     public void setLastVelocityTime(long time) { this.lastVelocityTime = time; }
