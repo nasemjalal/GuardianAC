@@ -1,4 +1,5 @@
 # GuardianAC Configuration
+# punishment: none / kick / ban
 
 settings:
   plugin-name: "&cGuardianAC"
@@ -13,21 +14,21 @@ checks:
     decay-seconds: 60
     max-speed: 0.5
     sprint-multiplier: 1.3
-    punishment: kick
+    punishment: none
 
   flight:
     enabled: true
     max-violations: 15
     decay-seconds: 60
     max-air-ticks: 10
-    punishment: kick
+    punishment: none
 
   reach:
     enabled: true
     max-violations: 20
     decay-seconds: 60
     max-reach: 3.5
-    punishment: kick
+    punishment: none
 
   killaura:
     enabled: true
@@ -35,111 +36,111 @@ checks:
     decay-seconds: 60
     max-angle: 75.0
     min-attack-delay: 55
-    punishment: kick
+    punishment: none
 
   autoclicker:
     enabled: true
     max-violations: 25
     decay-seconds: 60
     max-cps: 18.0
-    punishment: kick
+    punishment: none
 
   nofall:
     enabled: true
     max-violations: 15
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   jesus:
     enabled: true
     max-violations: 15
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   step:
     enabled: true
     max-violations: 12
     decay-seconds: 60
     max-step: 1.0
-    punishment: kick
+    punishment: none
 
   noslow:
     enabled: true
     max-violations: 20
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   timer:
     enabled: true
     max-violations: 10
     decay-seconds: 60
-    punishment: ban
+    punishment: none
 
   fastplace:
     enabled: true
     max-violations: 15
     decay-seconds: 60
     min-delay: 80
-    punishment: kick
+    punishment: none
 
   scaffold:
     enabled: true
     max-violations: 10
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   criticals:
     enabled: true
     max-violations: 12
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   velocity:
     enabled: true
     max-violations: 15
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   phase:
     enabled: true
     max-violations: 8
     decay-seconds: 60
-    punishment: ban
+    punishment: none
 
   inventorymove:
     enabled: false
     max-violations: 10
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   fastbreak:
     enabled: true
     max-violations: 15
     decay-seconds: 60
     min-delay: 100
-    punishment: kick
+    punishment: none
 
   blockreach:
     enabled: true
     max-violations: 15
     decay-seconds: 60
     max-reach: 4.5
-    punishment: kick
+    punishment: none
 
   nuker:
     enabled: true
     max-violations: 10
     decay-seconds: 60
-    punishment: ban
+    punishment: none
 
   wallhack:
     enabled: true
     max-violations: 12
     decay-seconds: 60
-    punishment: kick
+    punishment: none
 
   elytra:
     enabled: true
     max-violations: 10
     decay-seconds: 60
-    punishment: kick
+    punishment: none

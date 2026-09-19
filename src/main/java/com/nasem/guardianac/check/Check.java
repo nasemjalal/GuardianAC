@@ -13,6 +13,7 @@ public abstract class Check {
     protected boolean enabled;
     protected int maxViolations;
     protected int decaySeconds;
+    protected String punishment;
 
     public Check(GuardianAC plugin, CheckType type) {
         this.plugin = plugin;
@@ -25,7 +26,9 @@ public abstract class Check {
         String path = "checks." + type.getConfigKey();
         this.enabled = plugin.getConfig().getBoolean(path + ".enabled", true);
         this.maxViolations = plugin.getConfig().getInt(path + ".max-violations", 20);
-        this.decaySeconds = plugin.getConfig().getInt(path + ".decay-seconds", 10);
+        this.decaySeconds = plugin.getConfig().getInt(path + ".decay-seconds", 60);
+        // ⭐ العقوبة: "none" / "kick" / "ban"
+        this.punishment = plugin.getConfig().getString(path + ".punishment", "none");
     }
 
     public void reload() {
@@ -38,12 +41,12 @@ public abstract class Check {
         data.addViolation(type);
         int vl = data.getViolation(type);
 
+        // ⭐⭐⭐ يرسل التحذير فقط
         plugin.getAlertManager().sendAlert(player, this, vl, debug);
 
-        // ⭐⭐⭐ إذا وصل الحد → عقوبة
-        if (vl >= maxViolations) {
+        // ⭐⭐⭐ العقوبة فقط إذا مو "none"
+        if (!"none".equalsIgnoreCase(punishment) && vl >= maxViolations) {
             plugin.getPunishmentManager().applyPunishment(player, this, vl);
-            // نصفّر بعد العقوبة
             data.resetViolation(type);
         }
     }
@@ -70,5 +73,9 @@ public abstract class Check {
 
     public int getDecaySeconds() {
         return decaySeconds;
+    }
+
+    public String getPunishment() {
+        return punishment;
     }
 }

@@ -42,7 +42,7 @@ public class PacketListener {
 
                 PacketTypeCommon type = event.getPacketType();
 
-                // ⭐ تتبع النظر (KillAura)
+                // ⭐ تتبع النظر
                 if (type == PacketType.Play.Client.PLAYER_ROTATION
                         || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
                     try {
@@ -64,19 +64,24 @@ public class PacketListener {
                     handleSwing(player, data);
                 }
 
-                // ⭐ ضرب كيان (KillAura)
+                // ⭐ ضرب كيان
                 if (type == PacketType.Play.Client.INTERACT_ENTITY) {
                     handleUseEntity(event, player, data);
                 }
 
-                // ⭐ كسر بلوك (FastBreak + Nuker + BlockReach)
+                // ⭐ كسر بلوك
                 if (type == PacketType.Play.Client.PLAYER_DIGGING) {
                     handleBlockDig(event, player, data);
                 }
 
-                // ⭐ وضع بلوك (FastPlace + BlockReach)
+                // ⭐⭐⭐ وضع بلوك (FastPlace) — الطريقة الجديدة
                 if (type == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
-                    handleBlockPlace(event, player, data);
+                    handleBlockPlace(player, data, event);
+                }
+
+                // ⭐⭐⭐ استخدام آيتم على بلوك (1.19+) — الطريقة الأهم
+                if (type == PacketType.Play.Client.USE_ITEM_ON) {
+                    handleUseItemOn(player, data, event);
                 }
 
                 // ⭐ عداد الباكتات (Timer)
@@ -88,6 +93,59 @@ public class PacketListener {
                 }
             }
         });
+    }
+
+    /**
+     * ⭐ FastPlace من PLAYER_BLOCK_PLACEMENT
+     */
+    private void handleBlockPlace(Player player, PlayerData data, PacketReceiveEvent event) {
+        try {
+            long now = System.currentTimeMillis();
+            long lastPlace = data.getLastBlockPlaceTime();
+
+            data.setLastBlockPlaceTime(now);
+
+            if (lastPlace == 0) return;
+
+            long diff = now - lastPlace;
+            long minDelay = pluginInstance.getConfig()
+                    .getLong("checks.fastplace.min-delay", 80);
+
+            if (diff < minDelay && diff > 0) {
+                Check check = pluginInstance.getCheckManager().getCheck(CheckType.FASTPLACE);
+                if (check instanceof FastPlaceCheck && check.isEnabled()) {
+                    ((FastPlaceCheck) check).handlePacket(player, data, diff);
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * ⭐⭐⭐ FastPlace من USE_ITEM_ON (الطريقة الأهم في 1.19+)
+     */
+    private void handleUseItemOn(Player player, PlayerData data, PacketReceiveEvent event) {
+        try {
+            long now = System.currentTimeMillis();
+            long lastPlace = data.getLastBlockPlaceTime();
+
+            // ⭐⭐ نفس التتبع
+            long diff = now - lastPlace;
+
+            // ⭐ نحفظ الوقت
+            data.setLastBlockPlaceTime(now);
+
+            if (lastPlace == 0) return;
+
+            long minDelay = pluginInstance.getConfig()
+                    .getLong("checks.fastplace.min-delay", 80);
+
+            if (diff < minDelay && diff > 0) {
+                Check check = pluginInstance.getCheckManager().getCheck(CheckType.FASTPLACE);
+                if (check instanceof FastPlaceCheck && check.isEnabled()) {
+                    ((FastPlaceCheck) check).handlePacket(player, data, diff);
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     private void handleBlockDig(PacketReceiveEvent event, Player player, PlayerData data) {
@@ -102,7 +160,6 @@ public class PacketListener {
 
             long now = System.currentTimeMillis();
 
-            // FastBreak
             long minDelay = pluginInstance.getConfig().getLong("checks.fastbreak.min-delay", 100);
             long lastBreak = data.getLastBlockBreakTime();
 
@@ -113,7 +170,6 @@ public class PacketListener {
                 }
             }
 
-            // Nuker
             Location lastBreakLoc = data.getLastBlockBreakLocation();
             if (lastBreakLoc != null && lastBreak > 0 && (now - lastBreak) < 200) {
                 double dist = blockLoc.distance(lastBreakLoc);
@@ -125,7 +181,6 @@ public class PacketListener {
                 }
             }
 
-            // BlockReach
             double maxReach = pluginInstance.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
             double reach = player.getEyeLocation().distance(blockLoc.clone().add(0.5, 0.5, 0.5));
             if (reach > maxReach) {
@@ -137,43 +192,6 @@ public class PacketListener {
 
             data.setLastBlockBreakTime(now);
             data.setLastBlockBreakLocation(blockLoc);
-        } catch (Exception ignored) {}
-    }
-
-    private void handleBlockPlace(PacketReceiveEvent event, Player player, PlayerData data) {
-        try {
-            WrapperPlayClientPlayerBlockPlacement packet =
-                    new WrapperPlayClientPlayerBlockPlacement(event);
-            Location blockLoc = new Location(player.getWorld(),
-                    packet.getBlockPosition().getX(),
-                    packet.getBlockPosition().getY(),
-                    packet.getBlockPosition().getZ());
-
-            long now = System.currentTimeMillis();
-
-            // FastPlace
-            long minDelay = pluginInstance.getConfig().getLong("checks.fastplace.min-delay", 80);
-            long lastPlace = data.getLastBlockPlaceTime();
-
-            if (lastPlace > 0 && (now - lastPlace) < minDelay) {
-                Check check = pluginInstance.getCheckManager().getCheck(CheckType.FASTPLACE);
-                if (check instanceof FastPlaceCheck && check.isEnabled()) {
-                    ((FastPlaceCheck) check).handlePacket(player, data, now - lastPlace);
-                }
-            }
-
-            // BlockReach (place)
-            double maxReach = pluginInstance.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
-            double reach = player.getEyeLocation().distance(blockLoc.clone().add(0.5, 0.5, 0.5));
-            if (reach > maxReach) {
-                Check check = pluginInstance.getCheckManager().getCheck(CheckType.BLOCKREACH);
-                if (check instanceof BlockReachCheck && check.isEnabled()) {
-                    ((BlockReachCheck) check).handlePacketPlace(player, data, reach);
-                }
-            }
-
-            data.setLastBlockPlaceTime(now);
-            data.setLastBlockPlaceLocation(blockLoc);
         } catch (Exception ignored) {}
     }
 
