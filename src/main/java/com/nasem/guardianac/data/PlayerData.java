@@ -37,6 +37,7 @@ public class PlayerData {
     private long lastBlockPlaceTime;
     private Location lastBlockBreakLocation;
     private Location lastBlockPlaceLocation;
+    private int fastPlaceStreak;
 
     private long lastVelocityTime;
     private boolean pendingVelocity;
@@ -137,6 +138,8 @@ public class PlayerData {
     public void setLastBlockBreakLocation(Location loc) { this.lastBlockBreakLocation = loc; }
     public Location getLastBlockPlaceLocation() { return lastBlockPlaceLocation; }
     public void setLastBlockPlaceLocation(Location loc) { this.lastBlockPlaceLocation = loc; }
+    public int getFastPlaceStreak() { return fastPlaceStreak; }
+    public void setFastPlaceStreak(int streak) { this.fastPlaceStreak = streak; }
 
     public long getLastVelocityTime() { return lastVelocityTime; }
     public void setLastVelocityTime(long time) { this.lastVelocityTime = time; }
