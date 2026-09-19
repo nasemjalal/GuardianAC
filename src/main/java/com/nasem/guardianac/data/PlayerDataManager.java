@@ -34,13 +34,12 @@ public class PlayerDataManager {
     }
 
     private void startDecayTask() {
-        // ⭐⭐ كل 3 ثواني — VL ينزل بسرعة
+        // ⭐ 50% سرعة — decay كل 6 ثواني (بدل 3)
         decayTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (PlayerData data : dataMap.values()) {
-                // ⭐ كل 3 ثواني بدون flag → VL ينزل 1
-                data.decayViolations(3);
+                data.decayViolations(6);
             }
-        }, 20L * 3, 20L * 3);
+        }, 20L * 6, 20L * 6);
     }
 
     public void shutdown() {
