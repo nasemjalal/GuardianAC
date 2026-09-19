@@ -14,7 +14,6 @@ public class KillAuraCheck extends Check {
 
     private final double maxAngle;
     private final long minAttackDelay;
-    // ⭐ زاوية تغيير النظر المفاجئ
     private final float maxYawChange = 90.0f;
 
     public KillAuraCheck(GuardianAC plugin) {
@@ -24,7 +23,7 @@ public class KillAuraCheck extends Check {
     }
 
     /**
-     * ⭐ packet-level — USE_ENTITY
+     * ⭐ USE_ENTITY — ضربة كيان
      */
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
@@ -34,17 +33,15 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐⭐⭐ فحص Silent Aim — النظر قفز فجأة
+            // ⭐ Silent Aim
             float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
-            // نتعامل مع wrap-around (0° و 360°)
             if (yawDiff > 180) yawDiff = 360 - yawDiff;
 
             if (yawDiff > maxYawChange) {
-                flag(attacker, data, "silent-aim yaw jump=" + MathUtil.round(yawDiff, 1) + "°");
+                flag(attacker, data, "silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
                 return;
             }
 
-            // ⭐ فحص الزاوية العادي
             Vector look = attacker.getEyeLocation().getDirection().normalize();
             Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
                     .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
@@ -56,7 +53,6 @@ public class KillAuraCheck extends Check {
                 return;
             }
 
-            // ⭐ فحص سرعة الضرب
             long now = System.currentTimeMillis();
             long last = data.getLastAttackTime();
 
@@ -83,16 +79,14 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ Silent aim
             float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
             if (yawDiff > 180) yawDiff = 360 - yawDiff;
 
             if (yawDiff > maxYawChange) {
-                flag(attacker, data, "bukkit silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
+                flag(attacker, data, "silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
                 return;
             }
 
-            // ⭐ زاوية
             Vector look = attacker.getEyeLocation().getDirection().normalize();
             Vector toTarget = victim.getLocation().add(0, victim.getHeight() / 2.0, 0)
                     .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
@@ -100,13 +94,13 @@ public class KillAuraCheck extends Check {
             double angle = MathUtil.angle(look, toTarget);
 
             if (angle > maxAngle) {
-                flag(attacker, data, "bukkit angle=" + MathUtil.round(angle, 1) + "°");
+                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "°");
             }
         } catch (Exception ignored) {}
     }
 
     /**
-     * ⭐ swing check
+     * ⭐⭐⭐ swing — الأهم (مع تجاهل كسر البلوكات)
      */
     public void handleSwing(Player attacker, PlayerData data) {
         if (!enabled) return;
@@ -116,7 +110,16 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ Silent aim — حتى في swing
+            // ⭐⭐⭐ مهم: نتجاهل إذا اللاعب يكسر بلوك حالياً
+            long now = System.currentTimeMillis();
+            long lastBreak = data.getLastBlockBreakTime();
+
+            // إذا كسر بلوك في آخر 500ms → هذا swing لكسر بلوك، مو ضرب
+            if (lastBreak > 0 && (now - lastBreak) < 500) {
+                return;
+            }
+
+            // ⭐ Silent Aim
             float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
             if (yawDiff > 180) yawDiff = 360 - yawDiff;
 
