@@ -4,7 +4,9 @@ import com.nasem.guardianac.check.CheckType;
 import org.bukkit.Location;
 
 import java.util.EnumMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.UUID;
 
 public class PlayerData {
@@ -26,6 +28,10 @@ public class PlayerData {
     private int clicksThisSecond;
     private long clickWindowStart;
     private Location lastAttackLocation;
+
+    // ⭐ تتبع الكليكات (لـ TriggerBot)
+    private final Queue<Long> clickIntervals = new LinkedList<>();
+    private long lastEntityClickTime;
 
     private long lastSwingTime;
     private long lastEntityAttackTime;
@@ -99,6 +105,35 @@ public class PlayerData {
             }
         }
     }
+
+    // ⭐⭐⭐ تتبع الكليكات
+    public void addClickInterval(long interval) {
+        clickIntervals.add(interval);
+        if (clickIntervals.size() > 20) {
+            clickIntervals.poll();
+        }
+    }
+
+    public Queue<Long> getClickIntervals() { return clickIntervals; }
+
+    public double getClickIntervalVariance() {
+        if (clickIntervals.size() < 5) return -1;
+
+        double sum = 0;
+        for (long v : clickIntervals) sum += v;
+        double mean = sum / clickIntervals.size();
+
+        double variance = 0;
+        for (long v : clickIntervals) {
+            variance += Math.pow(v - mean, 2);
+        }
+        variance /= clickIntervals.size();
+
+        return Math.sqrt(variance);
+    }
+
+    public long getLastEntityClickTime() { return lastEntityClickTime; }
+    public void setLastEntityClickTime(long time) { this.lastEntityClickTime = time; }
 
     public Location getLastLocation() { return lastLocation; }
     public void setLastLocation(Location loc) { this.lastLocation = loc; }
