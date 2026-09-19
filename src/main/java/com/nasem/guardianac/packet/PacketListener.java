@@ -93,14 +93,14 @@ public class PacketListener {
 
             long now = System.currentTimeMillis();
 
-            // ⭐⭐⭐ Nuker packet-level — الأهم
+            // ⭐ Nuker packet-level
             Check nukerCheck = pluginInstance.getCheckManager().getCheck(CheckType.NUKER);
             if (nukerCheck instanceof NukerCheck && nukerCheck.isEnabled()) {
                 ((NukerCheck) nukerCheck).handlePacketDig(player, data, blockLoc);
             }
 
             // FastBreak
-            long minDelay = pluginInstance.getConfig().getLong("checks.fastbreak.min-delay", 100);
+            long minDelay = pluginInstance.getConfig().getLong("checks.fastbreak.min-delay", 80);
             long lastBreak = data.getLastBlockBreakTime();
 
             if (lastBreak > 0 && (now - lastBreak) < minDelay) {
@@ -122,7 +122,10 @@ public class PacketListener {
 
             data.setLastBlockBreakTime(now);
             data.setLastBlockBreakLocation(blockLoc);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            // ⭐ debug — إذا فيه خطأ، يظهر في الكونسول
+            pluginInstance.getLogger().warning("BlockDig error: " + e.getMessage());
+        }
     }
 
     private void handleSwing(Player player, PlayerData data) {

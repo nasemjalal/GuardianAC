@@ -14,9 +14,13 @@ import org.bukkit.potion.PotionEffectType;
 
 public class NukerCheck extends Check {
 
-    // ⭐ 8+ بلوكات في ثانية = Nuker (رفعناها من 5)
     private static final long WINDOW_MS = 1000;
-    private static final int MAX_BLOCKS = 8;
+
+    // ⭐ حد للأداة العادية
+    private static final int MAX_BLOCKS_NORMAL = 6;
+
+    // ⭐⭐⭐ حد للأداة المطوّرة (Efficiency V) — أعلى بكثير
+    private static final int MAX_BLOCKS_ENCHANTED = 12;
 
     public NukerCheck(GuardianAC plugin) {
         super(plugin, CheckType.NUKER);
@@ -29,9 +33,6 @@ public class NukerCheck extends Check {
         if (!enabled) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
 
-        // ⭐⭐⭐ نتجاهل إذا الأداة مطوّرة
-        if (hasEnchantedTool(player)) return;
-
         long now = System.currentTimeMillis();
         long windowStart = data.getBreakWindowStart();
 
@@ -44,8 +45,16 @@ public class NukerCheck extends Check {
         int count = data.getBreakCountInSecond() + 1;
         data.setBreakCountInSecond(count);
 
-        if (count >= MAX_BLOCKS) {
-            flag(player, data, "nuker " + count + " blocks/sec");
+        // ⭐⭐⭐ الحد يعتمد على الأداة
+        int threshold;
+        if (hasEnchantedTool(player)) {
+            threshold = MAX_BLOCKS_ENCHANTED; // 12
+        } else {
+            threshold = MAX_BLOCKS_NORMAL; // 6
+        }
+
+        if (count >= threshold) {
+            flag(player, data, "nuker " + count + " blocks/sec (max=" + threshold + ")");
             data.setLastNukerFlagTime(now);
             data.setBreakCountInSecond(0);
             data.setBreakWindowStart(now);
@@ -55,7 +64,6 @@ public class NukerCheck extends Check {
     public void handle(Player player, PlayerData data, BlockBreakEvent event) {
         if (!enabled) return;
         if (player.getGameMode() == GameMode.CREATIVE) return;
-        if (hasEnchantedTool(player)) return;
 
         long now = System.currentTimeMillis();
         long windowStart = data.getBreakWindowStart();
@@ -69,8 +77,10 @@ public class NukerCheck extends Check {
         int count = data.getBreakCountInSecond() + 1;
         data.setBreakCountInSecond(count);
 
-        if (count >= MAX_BLOCKS) {
-            flag(player, data, "nuker " + count);
+        int threshold = hasEnchantedTool(player) ? MAX_BLOCKS_ENCHANTED : MAX_BLOCKS_NORMAL;
+
+        if (count >= threshold) {
+            flag(player, data, "nuker " + count + " (max=" + threshold + ")");
             data.setLastNukerFlagTime(now);
             data.setBreakCountInSecond(0);
             data.setBreakWindowStart(now);
@@ -81,9 +91,6 @@ public class NukerCheck extends Check {
         // ما نستخدمها
     }
 
-    /**
-     * ⭐ فحص الأداة
-     */
     private boolean hasEnchantedTool(Player player) {
         try {
             ItemStack item = player.getInventory().getItemInMainHand();
