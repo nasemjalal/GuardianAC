@@ -8,23 +8,24 @@ import com.nasem.guardianac.util.MathUtil;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
-
-import java.util.function.Predicate;
 
 public class KillAuraCheck extends Check {
 
+    // ⭐ الزاوية القصوى — إذا نظر بعيد عن الهدف = KillAura
+    private final double maxAngle;
     private final long minAttackDelay;
 
     public KillAuraCheck(GuardianAC plugin) {
         super(plugin, CheckType.KILLAURA);
+        // ⭐ 60° — إذا الزاوية أكبر = ما يبص للهدف
+        this.maxAngle = plugin.getConfig().getDouble("checks.killaura.max-angle", 60.0);
         this.minAttackDelay = plugin.getConfig().getLong("checks.killaura.min-attack-delay", 55);
     }
 
     /**
-     * ⭐⭐⭐ USE_ENTITY — Ray Trace Detection
-     * يتحقق إذا خط النظر يمر من هيد بوكس الكيان
+     * ⭐ USE_ENTITY — ضرب كيان
+     * ⭐ نقيس الزاوية بين النظر والهدف
      */
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
@@ -34,33 +35,19 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐⭐⭐ Ray Trace — خط النظر
-            Vector eye = attacker.getEyeLocation().toVector();
-            Vector direction = attacker.getEyeLocation().getDirection().normalize();
+            // ⭐ اتجاه النظر
+            Vector look = attacker.getEyeLocation().getDirection().normalize();
 
-            // ⭐ مسافة الضرب
-            double maxRange = 5.0;
+            // ⭐ اتجاه الهدف (من العين)
+            Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
+                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
 
-            // ⭐ نبحث عن أول كيان يقطعه خط النظر
-            Predicate<Entity> filter = e -> e.getEntityId() == target.getEntityId();
+            // ⭐ الزاوية
+            double angle = MathUtil.angle(look, toTarget);
 
-            RayTraceResult result = attacker.getWorld().rayTraceEntities(
-                    attacker.getEyeLocation(),
-                    direction,
-                    maxRange,
-                    0.1,
-                    filter
-            );
-
-            // ⭐⭐⭐ إذا خط النظر **ما مر** من الكيان = KillAura
-            if (result == null || result.getHitEntity() == null) {
-                flag(attacker, data, "no-look-at-hitbox");
-                return;
-            }
-
-            // ⭐ تأكد إن اللي ضربه = اللي باصص له
-            if (result.getHitEntity().getEntityId() != target.getEntityId()) {
-                flag(attacker, data, "wrong-target");
+            // ⭐⭐⭐ إذا الزاوية كبيرة = ما يبص للهدف
+            if (angle > maxAngle) {
+                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "° > " + maxAngle);
                 return;
             }
 
@@ -91,30 +78,22 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            Vector eye = attacker.getEyeLocation().toVector();
-            Vector direction = attacker.getEyeLocation().getDirection().normalize();
+            Vector look = attacker.getEyeLocation().getDirection().normalize();
+            Vector toTarget = victim.getLocation().add(0, victim.getHeight() / 2.0, 0)
+                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
 
-            Predicate<Entity> filter = e -> e.getEntityId() == victim.getEntityId();
+            double angle = MathUtil.angle(look, toTarget);
 
-            RayTraceResult result = attacker.getWorld().rayTraceEntities(
-                    attacker.getEyeLocation(),
-                    direction,
-                    5.0,
-                    0.1,
-                    filter
-            );
-
-            if (result == null || result.getHitEntity() == null) {
-                flag(attacker, data, "bukkit no-look-at-hitbox");
+            if (angle > maxAngle) {
+                flag(attacker, data, "bukkit angle=" + MathUtil.round(angle, 1) + "°");
             }
         } catch (Exception ignored) {}
     }
 
     /**
-     * ⭐ Swing — نتجاهله تماماً (لأن ما نعرف الكيان)
+     * ⭐ Swing — ما نفحص شي (Nuker/FastBreak ما يطلعون KillAura)
      */
     public void handleSwing(Player attacker, PlayerData data) {
-        // ⭐ Swing بدون USE_ENTITY = مو KillAura (Nuker/FastBreak)
-        // ما نفحص شي هنا
+        // ⭐ نتجاهل Swing — KillAura يُفحص من USE_ENTITY فقط
     }
 }
