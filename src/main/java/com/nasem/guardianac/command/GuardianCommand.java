@@ -1,7 +1,6 @@
 package com.nasem.guardianac.command;
 
 import com.nasem.guardianac.GuardianAC;
-import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
 import org.bukkit.Bukkit;
@@ -26,7 +25,7 @@ public class GuardianCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        String prefix = plugin.getAlertManager().getPrefix();
+        String prefix = plugin.getAlertManager().getPluginName() + ChatColor.GRAY + " » " + ChatColor.RESET;
 
         if (args.length == 0) {
             sender.sendMessage(prefix + ChatColor.YELLOW + "GuardianAC v" + plugin.getDescription().getVersion());

@@ -9,75 +9,54 @@ import org.bukkit.entity.Player;
 public class AlertManager {
 
     private final GuardianAC plugin;
-    private final String prefix;
+    private final String pluginName;
 
     public AlertManager(GuardianAC plugin) {
         this.plugin = plugin;
-        this.prefix = ChatColor.translateAlternateColorCodes('&',
-                plugin.getConfig().getString("settings.prefix", "&8[&bGuardianAC&8] &r"));
+        this.pluginName = ChatColor.translateAlternateColorCodes('&',
+                plugin.getConfig().getString("settings.plugin-name", "&cGuardianAC"));
     }
 
-    /**
-     * Send an alert to staff with permission guardianac.alerts.
-     *
-     * @param player  the player being flagged
-     * @param check   the check that flagged them
-     * @param vl      the player's current violation level for that check
-     * @param debug   extra debug info
-     */
     public void sendAlert(Player player, Check check, int vl, String debug) {
         int threshold = plugin.getConfig().getInt("settings.alert-threshold", 1);
         if (vl < threshold) return;
 
-        String message = prefix
-                + ChatColor.GRAY + player.getName()
-                + ChatColor.WHITE + " failed "
-                + ChatColor.RED + check.getName()
-                + ChatColor.WHITE + " (VL: "
-                + ChatColor.YELLOW + vl
-                + ChatColor.WHITE + ")"
-                + (debug != null && !debug.isEmpty()
-                    ? ChatColor.GRAY + " [" + debug + "]" : "");
+        int maxVL = check.getMaxViolations();
 
-        // Send to all online staff
+        // ⭐ شكل Vulcan: GuardianAC » nasem failed Speed (Type A) [1/25]
+        String message = pluginName
+                + ChatColor.GRAY + " » "
+                + ChatColor.WHITE + player.getName()
+                + ChatColor.GRAY + " failed "
+                + ChatColor.WHITE + check.getName()
+                + ChatColor.GRAY + " (Type A) "
+                + ChatColor.RED + "[" + vl
+                + ChatColor.GRAY + "/" + maxVL
+                + ChatColor.RED + "]";
+
+        // إضافة debug إذا موجود
+        if (debug != null && !debug.isEmpty()) {
+            message += ChatColor.DARK_GRAY + " [" + debug + "]";
+        }
+
+        // إرسال للستاف
         for (Player online : Bukkit.getOnlinePlayers()) {
             if (online.hasPermission("guardianac.alerts")) {
                 online.sendMessage(message);
             }
         }
 
-        // Log to console if enabled
+        // الكونسول
         if (plugin.getConfig().getBoolean("settings.console-alerts", true)) {
             Bukkit.getConsoleSender().sendMessage(message);
         }
-
-        // Handle punishment if max violations reached
-        if (vl >= check.getMaxViolations()) {
-            handlePunishment(player, check, vl);
-        }
-    }
-
-    /**
-     * Handle punishment when max VL reached.
-     * Currently just logs and resets. Extend as needed.
-     */
-    private void handlePunishment(Player player, Check check, int vl) {
-        String punishMsg = prefix + ChatColor.DARK_RED + "[PUNISH] "
-                + ChatColor.WHITE + player.getName()
-                + " reached VL " + vl + " on " + check.getName();
-
-        Bukkit.getConsoleSender().sendMessage(punishMsg);
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online.hasPermission("guardianac.alerts")) {
-                online.sendMessage(punishMsg);
-            }
-        }
-
-        // Reset violations after punishment
-        plugin.getPlayerDataManager().get(player).resetViolation(check.getType());
     }
 
     public String getPrefix() {
-        return prefix;
+        return pluginName;
+    }
+
+    public String getPluginName() {
+        return pluginName;
     }
 }

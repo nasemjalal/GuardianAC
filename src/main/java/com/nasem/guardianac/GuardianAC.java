@@ -3,6 +3,7 @@ package com.nasem.guardianac;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.nasem.guardianac.alert.AlertManager;
+import com.nasem.guardianac.alert.PunishmentManager;
 import com.nasem.guardianac.check.CheckManager;
 import com.nasem.guardianac.command.GuardianCommand;
 import com.nasem.guardianac.data.PlayerDataManager;
@@ -20,6 +21,7 @@ public class GuardianAC extends JavaPlugin {
     private PlayerDataManager playerDataManager;
     private CheckManager checkManager;
     private AlertManager alertManager;
+    private PunishmentManager punishmentManager;
     private ProtocolManager protocolManager;
     private PacketListener packetListener;
 
@@ -27,34 +29,28 @@ public class GuardianAC extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
-        // Check ProtocolLib
         if (Bukkit.getPluginManager().getPlugin("ProtocolLib") == null) {
             getLogger().severe("ProtocolLib is not installed! GuardianAC requires ProtocolLib.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
-        // Save default config
         saveDefaultConfig();
 
-        // Initialize ProtocolLib
         this.protocolManager = ProtocolLibrary.getProtocolManager();
         this.packetListener = new PacketListener(this);
 
-        // Initialize managers
         this.playerDataManager = new PlayerDataManager(this);
         this.checkManager = new CheckManager(this);
         this.alertManager = new AlertManager(this);
+        this.punishmentManager = new PunishmentManager(this);
 
-        // Register Bukkit listeners
         Bukkit.getPluginManager().registerEvents(new MovementListener(this), this);
         Bukkit.getPluginManager().registerEvents(new CombatListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ConnectionListener(this), this);
 
-        // Register packet listener
         packetListener.register();
 
-        // Register command
         GuardianCommand commandExecutor = new GuardianCommand(this);
         getCommand("guardian").setExecutor(commandExecutor);
         getCommand("guardian").setTabCompleter(commandExecutor);
@@ -87,6 +83,10 @@ public class GuardianAC extends JavaPlugin {
 
     public AlertManager getAlertManager() {
         return alertManager;
+    }
+
+    public PunishmentManager getPunishmentManager() {
+        return punishmentManager;
     }
 
     public ProtocolManager getProtocolManager() {

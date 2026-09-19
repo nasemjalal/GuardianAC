@@ -28,20 +28,10 @@ public abstract class Check {
         this.decaySeconds = plugin.getConfig().getInt(path + ".decay-seconds", 10);
     }
 
-    /**
-     * Called when the check should be re-evaluated (e.g., after config reload).
-     */
     public void reload() {
         loadConfig();
     }
 
-    /**
-     * Flag a player for this check.
-     *
-     * @param player  the player
-     * @param data    the player's data
-     * @param debug   extra info to include in the alert
-     */
     protected void flag(Player player, PlayerData data, String debug) {
         if (!enabled) return;
 
@@ -49,6 +39,13 @@ public abstract class Check {
         int vl = data.getViolation(type);
 
         plugin.getAlertManager().sendAlert(player, this, vl, debug);
+
+        // ⭐⭐⭐ إذا وصل الحد → عقوبة
+        if (vl >= maxViolations) {
+            plugin.getPunishmentManager().applyPunishment(player, this, vl);
+            // نصفّر بعد العقوبة
+            data.resetViolation(type);
+        }
     }
 
     public CheckType getType() {
@@ -56,6 +53,10 @@ public abstract class Check {
     }
 
     public String getName() {
+        return name;
+    }
+
+    public String getNameText() {
         return name;
     }
 
