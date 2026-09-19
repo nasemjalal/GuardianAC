@@ -13,7 +13,6 @@ import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.check.impl.BlockReachCheck;
 import com.nasem.guardianac.check.impl.FastBreakCheck;
-import com.nasem.guardianac.check.impl.FastPlaceCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
 import com.nasem.guardianac.check.impl.NukerCheck;
 import com.nasem.guardianac.data.PlayerData;
@@ -42,7 +41,6 @@ public class PacketListener {
 
                 PacketTypeCommon type = event.getPacketType();
 
-                // ⭐ تتبع النظر
                 if (type == PacketType.Play.Client.PLAYER_ROTATION
                         || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
                     try {
@@ -58,28 +56,21 @@ public class PacketListener {
                     } catch (Exception ignored) {}
                 }
 
-                // ⭐ Swing
                 if (type == PacketType.Play.Client.ANIMATION) {
                     data.incrementClicks();
                     handleSwing(player, data);
                 }
 
-                // ⭐ ضرب كيان
                 if (type == PacketType.Play.Client.INTERACT_ENTITY) {
                     handleUseEntity(event, player, data);
                 }
 
-                // ⭐ كسر بلوك
                 if (type == PacketType.Play.Client.PLAYER_DIGGING) {
                     handleBlockDig(event, player, data);
                 }
 
-                // ⭐⭐⭐ وضع بلوك (FastPlace)
-                if (type == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
-                    handleBlockPlace(player, data);
-                }
+                // ⭐ ما نستخدم PLAYER_BLOCK_PLACEMENT — نعتمد على BlockPlaceEvent
 
-                // ⭐ عداد الباكتات (Timer)
                 if (type == PacketType.Play.Client.PLAYER_POSITION
                         || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION
                         || type == PacketType.Play.Client.PLAYER_ROTATION
@@ -88,31 +79,6 @@ public class PacketListener {
                 }
             }
         });
-    }
-
-    /**
-     * ⭐ FastPlace — PLAYER_BLOCK_PLACEMENT
-     */
-    private void handleBlockPlace(Player player, PlayerData data) {
-        try {
-            long now = System.currentTimeMillis();
-            long lastPlace = data.getLastBlockPlaceTime();
-
-            data.setLastBlockPlaceTime(now);
-
-            if (lastPlace == 0) return;
-
-            long diff = now - lastPlace;
-            long minDelay = pluginInstance.getConfig()
-                    .getLong("checks.fastplace.min-delay", 80);
-
-            if (diff < minDelay && diff > 0) {
-                Check check = pluginInstance.getCheckManager().getCheck(CheckType.FASTPLACE);
-                if (check instanceof FastPlaceCheck && check.isEnabled()) {
-                    ((FastPlaceCheck) check).handlePacket(player, data, diff);
-                }
-            }
-        } catch (Exception ignored) {}
     }
 
     private void handleBlockDig(PacketReceiveEvent event, Player player, PlayerData data) {

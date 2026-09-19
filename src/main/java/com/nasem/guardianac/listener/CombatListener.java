@@ -53,12 +53,20 @@ public class CombatListener implements Listener {
         Player player = event.getPlayer();
         PlayerData data = plugin.getPlayerDataManager().get(player);
 
-        // ⭐ FastPlace يُفحص الآن في PacketListener (packet-level)
+        // ⭐ FastPlace — فقط لما يوضع بلوك حقيقي
+        runFastPlace(player, data);
+
         runBlockReachPlace(player, event, data);
         runScaffold(player, event, data);
     }
 
-    // ============ Check runners ============
+    private void runFastPlace(Player player, PlayerData data) {
+        Check check = plugin.getCheckManager().getCheck(CheckType.FASTPLACE);
+        if (check == null || !check.isEnabled()) return;
+        try {
+            ((com.nasem.guardianac.check.impl.FastPlaceCheck) check).handle(player, data);
+        } catch (Exception ignored) {}
+    }
 
     private void runReach(Player attacker, Entity victim, PlayerData data) {
         Check check = plugin.getCheckManager().getCheck(CheckType.REACH);
