@@ -22,9 +22,6 @@ public class KillAuraCheck extends Check {
         this.minAttackDelay = plugin.getConfig().getLong("checks.killaura.min-attack-delay", 55);
     }
 
-    /**
-     * ⭐ USE_ENTITY — ضربة كيان
-     */
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
 
@@ -33,7 +30,13 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ Silent Aim
+            // ⭐ نتجاهل إذا كسر بلوك حديثاً
+            long now = System.currentTimeMillis();
+            long lastBreak = data.getLastBlockBreakTime();
+            if (lastBreak > 0 && (now - lastBreak) < 2000) {
+                return;
+            }
+
             float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
             if (yawDiff > 180) yawDiff = 360 - yawDiff;
 
@@ -53,9 +56,7 @@ public class KillAuraCheck extends Check {
                 return;
             }
 
-            long now = System.currentTimeMillis();
             long last = data.getLastAttackTime();
-
             if (last > 0) {
                 long diff = now - last;
                 if (diff < minAttackDelay && diff > 0) {
@@ -68,9 +69,6 @@ public class KillAuraCheck extends Check {
         } catch (Exception ignored) {}
     }
 
-    /**
-     * ⭐ Bukkit fallback
-     */
     public void handle(Player attacker, Entity victim, PlayerData data) {
         if (!enabled) return;
 
@@ -78,6 +76,13 @@ public class KillAuraCheck extends Check {
             GameMode gm = attacker.getGameMode();
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
+
+            // ⭐ نتجاهل إذا كسر بلوك حديثاً
+            long now = System.currentTimeMillis();
+            long lastBreak = data.getLastBlockBreakTime();
+            if (lastBreak > 0 && (now - lastBreak) < 2000) {
+                return;
+            }
 
             float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
             if (yawDiff > 180) yawDiff = 360 - yawDiff;
@@ -99,9 +104,6 @@ public class KillAuraCheck extends Check {
         } catch (Exception ignored) {}
     }
 
-    /**
-     * ⭐⭐⭐ swing — الأهم (مع تجاهل كسر البلوكات)
-     */
     public void handleSwing(Player attacker, PlayerData data) {
         if (!enabled) return;
 
@@ -110,16 +112,14 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐⭐⭐ مهم: نتجاهل إذا اللاعب يكسر بلوك حالياً
+            // ⭐⭐⭐ نتجاهل إذا كسر بلوك في آخر 2 ثانية
             long now = System.currentTimeMillis();
             long lastBreak = data.getLastBlockBreakTime();
 
-            // إذا كسر بلوك في آخر 500ms → هذا swing لكسر بلوك، مو ضرب
-            if (lastBreak > 0 && (now - lastBreak) < 500) {
+            if (lastBreak > 0 && (now - lastBreak) < 2000) {
                 return;
             }
 
-            // ⭐ Silent Aim
             float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
             if (yawDiff > 180) yawDiff = 360 - yawDiff;
 
