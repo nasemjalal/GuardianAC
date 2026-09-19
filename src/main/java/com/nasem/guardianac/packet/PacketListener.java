@@ -58,18 +58,18 @@ public class PacketListener {
 
                 if (type == PacketType.Play.Client.ANIMATION) {
                     data.incrementClicks();
+                    data.setLastSwingTime(System.currentTimeMillis());
                     handleSwing(player, data);
                 }
 
                 if (type == PacketType.Play.Client.INTERACT_ENTITY) {
+                    data.setLastEntityAttackTime(System.currentTimeMillis());
                     handleUseEntity(event, player, data);
                 }
 
                 if (type == PacketType.Play.Client.PLAYER_DIGGING) {
                     handleBlockDig(event, player, data);
                 }
-
-                // ⭐ ما نستخدم PLAYER_BLOCK_PLACEMENT — نعتمد على BlockPlaceEvent
 
                 if (type == PacketType.Play.Client.PLAYER_POSITION
                         || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION
@@ -93,6 +93,13 @@ public class PacketListener {
 
             long now = System.currentTimeMillis();
 
+            // ⭐⭐⭐ Nuker packet-level — الأهم
+            Check nukerCheck = pluginInstance.getCheckManager().getCheck(CheckType.NUKER);
+            if (nukerCheck instanceof NukerCheck && nukerCheck.isEnabled()) {
+                ((NukerCheck) nukerCheck).handlePacketDig(player, data, blockLoc);
+            }
+
+            // FastBreak
             long minDelay = pluginInstance.getConfig().getLong("checks.fastbreak.min-delay", 100);
             long lastBreak = data.getLastBlockBreakTime();
 
@@ -103,17 +110,7 @@ public class PacketListener {
                 }
             }
 
-            Location lastBreakLoc = data.getLastBlockBreakLocation();
-            if (lastBreakLoc != null && lastBreak > 0 && (now - lastBreak) < 200) {
-                double dist = blockLoc.distance(lastBreakLoc);
-                if (dist > 2.0) {
-                    Check check = pluginInstance.getCheckManager().getCheck(CheckType.NUKER);
-                    if (check instanceof NukerCheck && check.isEnabled()) {
-                        ((NukerCheck) check).handlePacket(player, data, dist, now - lastBreak);
-                    }
-                }
-            }
-
+            // BlockReach
             double maxReach = pluginInstance.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
             double reach = player.getEyeLocation().distance(blockLoc.clone().add(0.5, 0.5, 0.5));
             if (reach > maxReach) {
