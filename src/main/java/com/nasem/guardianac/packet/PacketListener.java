@@ -64,6 +64,8 @@ public class PacketListener {
                 }
 
                 if (type == PacketType.Play.Client.INTERACT_ENTITY) {
+                    // ⭐ DEBUG
+                    pluginInstance.getLogger().info("[DEBUG Packet] INTERACT_ENTITY from " + player.getName());
                     data.setLastEntityAttackTime(System.currentTimeMillis());
                     handleUseEntity(event, player, data);
                 }
@@ -135,13 +137,11 @@ public class PacketListener {
     private void handleUseEntity(PacketReceiveEvent event, Player player, PlayerData data) {
         try {
             WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
-            if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
-            // ⭐ AutoClicker + TriggerBot
-            Check autoClicker = pluginInstance.getCheckManager().getCheck(CheckType.AUTOCLICKER);
-            if (autoClicker instanceof AutoClickerCheck && autoClicker.isEnabled()) {
-                ((AutoClickerCheck) autoClicker).handleAttack(player, data);
-            }
+            // ⭐ DEBUG — نوع الإجراء
+            pluginInstance.getLogger().info("[DEBUG UseEntity] action=" + packet.getAction());
+
+            if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
             int entityId = packet.getEntityId();
             Entity target = null;
@@ -151,13 +151,20 @@ public class PacketListener {
                     break;
                 }
             }
+
+            // ⭐ DEBUG
+            pluginInstance.getLogger().info("[DEBUG UseEntity] entityId=" + entityId
+                    + " target=" + (target == null ? "NULL" : target.getType()));
+
             if (target == null) return;
 
             Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
             if (check instanceof KillAuraCheck && check.isEnabled()) {
                 ((KillAuraCheck) check).handlePacket(player, data, target);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            pluginInstance.getLogger().warning("[DEBUG UseEntity Error] " + e.getMessage());
+        }
     }
 
     public void unregister() {

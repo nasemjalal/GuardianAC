@@ -12,20 +12,17 @@ import org.bukkit.util.Vector;
 
 public class KillAuraCheck extends Check {
 
-    // ⭐ الزاوية القصوى — إذا نظر بعيد عن الهدف = KillAura
     private final double maxAngle;
     private final long minAttackDelay;
 
     public KillAuraCheck(GuardianAC plugin) {
         super(plugin, CheckType.KILLAURA);
-        // ⭐ 60° — إذا الزاوية أكبر = ما يبص للهدف
         this.maxAngle = plugin.getConfig().getDouble("checks.killaura.max-angle", 60.0);
         this.minAttackDelay = plugin.getConfig().getLong("checks.killaura.min-attack-delay", 55);
     }
 
     /**
-     * ⭐ USE_ENTITY — ضرب كيان
-     * ⭐ نقيس الزاوية بين النظر والهدف
+     * ⭐ USE_ENTITY — نطبع debug في الكونسول
      */
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
@@ -35,23 +32,21 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ اتجاه النظر
             Vector look = attacker.getEyeLocation().getDirection().normalize();
-
-            // ⭐ اتجاه الهدف (من العين)
             Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
                     .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
 
-            // ⭐ الزاوية
             double angle = MathUtil.angle(look, toTarget);
 
-            // ⭐⭐⭐ إذا الزاوية كبيرة = ما يبص للهدف
+            // ⭐ DEBUG — نطبع في الكونسول عشان نشوف
+            plugin.getLogger().info("[DEBUG KillAura] " + attacker.getName()
+                    + " angle=" + MathUtil.round(angle, 1) + "° target=" + target.getType());
+
             if (angle > maxAngle) {
-                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "° > " + maxAngle);
+                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "°");
                 return;
             }
 
-            // ⭐ فحص سرعة الضرب
             long now = System.currentTimeMillis();
             long last = data.getLastAttackTime();
 
@@ -64,15 +59,13 @@ public class KillAuraCheck extends Check {
             }
 
             data.setLastAttackTime(now);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            plugin.getLogger().warning("[DEBUG KillAura Error] " + e.getMessage());
+        }
     }
 
-    /**
-     * ⭐ Bukkit fallback
-     */
     public void handle(Player attacker, Entity victim, PlayerData data) {
         if (!enabled) return;
-
         try {
             GameMode gm = attacker.getGameMode();
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
@@ -84,16 +77,16 @@ public class KillAuraCheck extends Check {
 
             double angle = MathUtil.angle(look, toTarget);
 
+            plugin.getLogger().info("[DEBUG KillAura Bukkit] " + attacker.getName()
+                    + " angle=" + MathUtil.round(angle, 1) + "°");
+
             if (angle > maxAngle) {
                 flag(attacker, data, "bukkit angle=" + MathUtil.round(angle, 1) + "°");
             }
         } catch (Exception ignored) {}
     }
 
-    /**
-     * ⭐ Swing — ما نفحص شي (Nuker/FastBreak ما يطلعون KillAura)
-     */
     public void handleSwing(Player attacker, PlayerData data) {
-        // ⭐ نتجاهل Swing — KillAura يُفحص من USE_ENTITY فقط
+        // ما نفحص
     }
 }
