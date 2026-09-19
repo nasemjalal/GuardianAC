@@ -6,7 +6,6 @@ import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.DiggingAction;
-import com.github.retrooper.packetevents.protocol.player.InteractionHand;
 import com.github.retrooper.packetevents.wrapper.play.client.*;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
@@ -30,7 +29,8 @@ public class PacketListener {
     }
 
     public void register() {
-        PacketEvents.getAPI().getEventManager().registerListener(new PacketListenerAbstract(PacketListenerPriority.HIGHEST) {
+        PacketEvents.getAPI().getEventManager().registerListener(
+                new PacketListenerAbstract(PacketListenerPriority.HIGHEST) {
             @Override
             public void onPacketReceive(PacketReceiveEvent event) {
                 Player player = event.getPlayer();
@@ -39,49 +39,50 @@ public class PacketListener {
                 PlayerData data = pluginInstance.getPlayerDataManager().get(player);
                 if (data == null) return;
 
-                // ⭐ تتبع النظر (KillAura)
-                if (event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION
-                        || event.getPacketType() == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
+                PacketType.Play.Client type = event.getPacketType();
+
+                // ⭐ تتبع النظر (KillAura) — نقرأ القيم مباشرة
+                if (type == PacketType.Play.Client.PLAYER_ROTATION
+                        || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
                     try {
-                        WrapperPlayClientPlayerFlying flyingPacket = new WrapperPlayClientPlayerFlying(event);
-                        if (flyingPacket.hasRotation()) {
-                            float yaw = flyingPacket.getLocation().getYaw();
-                            float pitch = flyingPacket.getLocation().getPitch();
-                            data.setPreviousYaw(data.getCurrentYaw());
-                            data.setPreviousPitch(data.getCurrentPitch());
-                            data.setCurrentYaw(yaw);
-                            data.setCurrentPitch(pitch);
-                            data.setLastLookTime(System.currentTimeMillis());
-                        }
+                        WrapperPlayClientPlayerFlying flyingPacket =
+                                new WrapperPlayClientPlayerFlying(event);
+                        float yaw = flyingPacket.getLocation().getYaw();
+                        float pitch = flyingPacket.getLocation().getPitch();
+                        data.setPreviousYaw(data.getCurrentYaw());
+                        data.setPreviousPitch(data.getCurrentPitch());
+                        data.setCurrentYaw(yaw);
+                        data.setCurrentPitch(pitch);
+                        data.setLastLookTime(System.currentTimeMillis());
                     } catch (Exception ignored) {}
                 }
 
                 // ⭐ Swing
-                if (event.getPacketType() == PacketType.Play.Client.ANIMATION) {
+                if (type == PacketType.Play.Client.ANIMATION) {
                     data.incrementClicks();
                     handleSwing(player, data);
                 }
 
                 // ⭐ ضرب كيان (KillAura)
-                if (event.getPacketType() == PacketType.Play.Client.INTERACT_ENTITY) {
+                if (type == PacketType.Play.Client.INTERACT_ENTITY) {
                     handleUseEntity(event, player, data);
                 }
 
                 // ⭐ كسر بلوك (FastBreak + Nuker + BlockReach)
-                if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING) {
+                if (type == PacketType.Play.Client.PLAYER_DIGGING) {
                     handleBlockDig(event, player, data);
                 }
 
                 // ⭐ وضع بلوك (FastPlace + BlockReach)
-                if (event.getPacketType() == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
+                if (type == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
                     handleBlockPlace(event, player, data);
                 }
 
                 // ⭐ عداد الباكتات (Timer)
-                if (event.getPacketType() == PacketType.Play.Client.PLAYER_POSITION
-                        || event.getPacketType() == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION
-                        || event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION
-                        || event.getPacketType() == PacketType.Play.Client.PLAYER_FLYING) {
+                if (type == PacketType.Play.Client.PLAYER_POSITION
+                        || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION
+                        || type == PacketType.Play.Client.PLAYER_ROTATION
+                        || type == PacketType.Play.Client.PLAYER_FLYING) {
                     data.incrementPacketCount();
                 }
             }
@@ -140,7 +141,8 @@ public class PacketListener {
 
     private void handleBlockPlace(PacketReceiveEvent event, Player player, PlayerData data) {
         try {
-            WrapperPlayClientPlayerBlockPlacement packet = new WrapperPlayClientPlayerBlockPlacement(event);
+            WrapperPlayClientPlayerBlockPlacement packet =
+                    new WrapperPlayClientPlayerBlockPlacement(event);
             Location blockLoc = new Location(player.getWorld(),
                     packet.getBlockPosition().getX(),
                     packet.getBlockPosition().getY(),
