@@ -1,7 +1,6 @@
 package com.nasem.guardianac;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
+import com.github.retrooper.packetevents.PacketEvents;
 import com.nasem.guardianac.alert.AlertManager;
 import com.nasem.guardianac.alert.PunishmentManager;
 import com.nasem.guardianac.check.CheckManager;
@@ -22,22 +21,24 @@ public class GuardianAC extends JavaPlugin {
     private CheckManager checkManager;
     private AlertManager alertManager;
     private PunishmentManager punishmentManager;
-    private ProtocolManager protocolManager;
     private PacketListener packetListener;
 
     @Override
     public void onEnable() {
         instance = this;
 
-        if (Bukkit.getPluginManager().getPlugin("ProtocolLib") == null) {
-            getLogger().severe("ProtocolLib is not installed! GuardianAC requires ProtocolLib.");
+        if (Bukkit.getPluginManager().getPlugin("packetevents") == null) {
+            getLogger().severe("PacketEvents is not installed! GuardianAC requires PacketEvents.");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
         saveDefaultConfig();
 
-        this.protocolManager = ProtocolLibrary.getProtocolManager();
+        // Initialize PacketEvents API
+        PacketEvents.getAPI().load();
+        PacketEvents.getAPI().init();
+
         this.packetListener = new PacketListener(this);
 
         this.playerDataManager = new PlayerDataManager(this);
@@ -55,7 +56,7 @@ public class GuardianAC extends JavaPlugin {
         getCommand("guardian").setExecutor(commandExecutor);
         getCommand("guardian").setTabCompleter(commandExecutor);
 
-        getLogger().info("GuardianAC v" + getDescription().getVersion() + " enabled with ProtocolLib!");
+        getLogger().info("GuardianAC v" + getDescription().getVersion() + " enabled with PacketEvents!");
     }
 
     @Override
@@ -66,6 +67,7 @@ public class GuardianAC extends JavaPlugin {
         if (checkManager != null) {
             checkManager.shutdown();
         }
+        PacketEvents.getAPI().terminate();
         getLogger().info("GuardianAC disabled.");
     }
 
@@ -87,9 +89,5 @@ public class GuardianAC extends JavaPlugin {
 
     public PunishmentManager getPunishmentManager() {
         return punishmentManager;
-    }
-
-    public ProtocolManager getProtocolManager() {
-        return protocolManager;
     }
 }

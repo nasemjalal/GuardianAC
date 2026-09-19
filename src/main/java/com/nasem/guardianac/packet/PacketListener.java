@@ -1,13 +1,13 @@
 package com.nasem.guardianac.packet;
 
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.ProtocolManager;
-import com.comphenix.protocol.events.ListenerPriority;
-import com.comphenix.protocol.events.PacketAdapter;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.wrappers.BlockPosition;
-import com.comphenix.protocol.wrappers.EnumWrappers;
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.player.DiggingAction;
+import com.github.retrooper.packetevents.protocol.player.InteractionHand;
+import com.github.retrooper.packetevents.wrapper.play.client.*;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
@@ -24,91 +24,83 @@ import org.bukkit.entity.Player;
 public class PacketListener {
 
     private final GuardianAC pluginInstance;
-    private final ProtocolManager protocolManager;
-    private PacketAdapter adapter;
 
     public PacketListener(GuardianAC plugin) {
         this.pluginInstance = plugin;
-        this.protocolManager = plugin.getProtocolManager();
     }
 
     public void register() {
-        adapter = new PacketAdapter(pluginInstance, ListenerPriority.HIGHEST,
-                PacketType.Play.Client.POSITION,
-                PacketType.Play.Client.POSITION_LOOK,
-                PacketType.Play.Client.LOOK,
-                PacketType.Play.Client.FLYING,
-                PacketType.Play.Client.ARM_ANIMATION,
-                PacketType.Play.Client.USE_ENTITY,
-                PacketType.Play.Client.BLOCK_DIG,
-                PacketType.Play.Client.BLOCK_PLACE) {
-
+        PacketEvents.getAPI().getEventManager().registerListener(new PacketListenerAbstract(PacketListenerPriority.HIGHEST) {
             @Override
-            public void onPacketReceiving(PacketEvent event) {
+            public void onPacketReceive(PacketReceiveEvent event) {
                 Player player = event.getPlayer();
                 if (player == null) return;
 
                 PlayerData data = pluginInstance.getPlayerDataManager().get(player);
                 if (data == null) return;
 
-                PacketType type = event.getPacketType();
-
-                if (type == PacketType.Play.Client.POSITION_LOOK
-                        || type == PacketType.Play.Client.LOOK) {
+                // ⭐ تتبع النظر (KillAura)
+                if (event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION
+                        || event.getPacketType() == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
                     try {
-                        PacketContainer packet = event.getPacket();
-                        float yaw = packet.getFloat().read(0);
-                        float pitch = packet.getFloat().read(1);
-
-                        data.setPreviousYaw(data.getCurrentYaw());
-                        data.setPreviousPitch(data.getCurrentPitch());
-                        data.setCurrentYaw(yaw);
-                        data.setCurrentPitch(pitch);
-                        data.setLastLookTime(System.currentTimeMillis());
+                        WrapperPlayClientPlayerFlying flyingPacket = new WrapperPlayClientPlayerFlying(event);
+                        if (flyingPacket.hasRotation()) {
+                            float yaw = flyingPacket.getLocation().getYaw();
+                            float pitch = flyingPacket.getLocation().getPitch();
+                            data.setPreviousYaw(data.getCurrentYaw());
+                            data.setPreviousPitch(data.getCurrentPitch());
+                            data.setCurrentYaw(yaw);
+                            data.setCurrentPitch(pitch);
+                            data.setLastLookTime(System.currentTimeMillis());
+                        }
                     } catch (Exception ignored) {}
                 }
 
-                if (type == PacketType.Play.Client.ARM_ANIMATION) {
+                // ⭐ Swing
+                if (event.getPacketType() == PacketType.Play.Client.ANIMATION) {
                     data.incrementClicks();
                     handleSwing(player, data);
-                } else if (type == PacketType.Play.Client.USE_ENTITY) {
+                }
+
+                // ⭐ ضرب كيان (KillAura)
+                if (event.getPacketType() == PacketType.Play.Client.INTERACT_ENTITY) {
                     handleUseEntity(event, player, data);
-                } else if (type == PacketType.Play.Client.BLOCK_DIG) {
+                }
+
+                // ⭐ كسر بلوك (FastBreak + Nuker + BlockReach)
+                if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING) {
                     handleBlockDig(event, player, data);
-                } else if (type == PacketType.Play.Client.BLOCK_PLACE) {
+                }
+
+                // ⭐ وضع بلوك (FastPlace + BlockReach)
+                if (event.getPacketType() == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
                     handleBlockPlace(event, player, data);
                 }
 
-                if (type == PacketType.Play.Client.POSITION
-                        || type == PacketType.Play.Client.POSITION_LOOK
-                        || type == PacketType.Play.Client.LOOK
-                        || type == PacketType.Play.Client.FLYING) {
+                // ⭐ عداد الباكتات (Timer)
+                if (event.getPacketType() == PacketType.Play.Client.PLAYER_POSITION
+                        || event.getPacketType() == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION
+                        || event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION
+                        || event.getPacketType() == PacketType.Play.Client.PLAYER_FLYING) {
                     data.incrementPacketCount();
                 }
             }
-        };
-
-        protocolManager.addPacketListener(adapter);
+        });
     }
 
-    /**
-     * ⭐⭐ BLOCK_DIG — FastBreak + Nuker + BlockReach
-     */
-    private void handleBlockDig(PacketEvent event, Player player, PlayerData data) {
+    private void handleBlockDig(PacketReceiveEvent event, Player player, PlayerData data) {
         try {
-            PacketContainer packet = event.getPacket();
-            EnumWrappers.PlayerDigType digType = packet.getPlayerDigTypes().read(0);
+            WrapperPlayClientPlayerDigging packet = new WrapperPlayClientPlayerDigging(event);
+            if (packet.getAction() != DiggingAction.START_DIGGING) return;
 
-            // فقط START_DESTROY_BLOCK
-            if (digType != EnumWrappers.PlayerDigType.START_DESTROY_BLOCK) return;
-
-            BlockPosition pos = packet.getBlockPositionModifier().read(0);
             Location blockLoc = new Location(player.getWorld(),
-                    pos.getX(), pos.getY(), pos.getZ());
+                    packet.getBlockPosition().getX(),
+                    packet.getBlockPosition().getY(),
+                    packet.getBlockPosition().getZ());
 
             long now = System.currentTimeMillis();
 
-            // ⭐ FastBreak
+            // FastBreak
             long minDelay = pluginInstance.getConfig().getLong("checks.fastbreak.min-delay", 100);
             long lastBreak = data.getLastBlockBreakTime();
 
@@ -119,7 +111,7 @@ public class PacketListener {
                 }
             }
 
-            // ⭐ Nuker — كسر بلوكات متباعدة
+            // Nuker
             Location lastBreakLoc = data.getLastBlockBreakLocation();
             if (lastBreakLoc != null && lastBreak > 0 && (now - lastBreak) < 200) {
                 double dist = blockLoc.distance(lastBreakLoc);
@@ -131,7 +123,7 @@ public class PacketListener {
                 }
             }
 
-            // ⭐ BlockReach — بلوك بعيد
+            // BlockReach
             double maxReach = pluginInstance.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
             double reach = player.getEyeLocation().distance(blockLoc.clone().add(0.5, 0.5, 0.5));
             if (reach > maxReach) {
@@ -146,19 +138,17 @@ public class PacketListener {
         } catch (Exception ignored) {}
     }
 
-    /**
-     * ⭐⭐ BLOCK_PLACE — FastPlace + BlockReach
-     */
-    private void handleBlockPlace(PacketEvent event, Player player, PlayerData data) {
+    private void handleBlockPlace(PacketReceiveEvent event, Player player, PlayerData data) {
         try {
-            PacketContainer packet = event.getPacket();
-            BlockPosition pos = packet.getBlockPositionModifier().read(0);
+            WrapperPlayClientPlayerBlockPlacement packet = new WrapperPlayClientPlayerBlockPlacement(event);
             Location blockLoc = new Location(player.getWorld(),
-                    pos.getX(), pos.getY(), pos.getZ());
+                    packet.getBlockPosition().getX(),
+                    packet.getBlockPosition().getY(),
+                    packet.getBlockPosition().getZ());
 
             long now = System.currentTimeMillis();
 
-            // ⭐ FastPlace
+            // FastPlace
             long minDelay = pluginInstance.getConfig().getLong("checks.fastplace.min-delay", 80);
             long lastPlace = data.getLastBlockPlaceTime();
 
@@ -169,7 +159,7 @@ public class PacketListener {
                 }
             }
 
-            // ⭐ BlockReach (place)
+            // BlockReach (place)
             double maxReach = pluginInstance.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
             double reach = player.getEyeLocation().distance(blockLoc.clone().add(0.5, 0.5, 0.5));
             if (reach > maxReach) {
@@ -191,13 +181,12 @@ public class PacketListener {
         }
     }
 
-    private void handleUseEntity(PacketEvent event, Player player, PlayerData data) {
+    private void handleUseEntity(PacketReceiveEvent event, Player player, PlayerData data) {
         try {
-            PacketContainer packet = event.getPacket();
-            EnumWrappers.EntityUseAction action = packet.getEntityUseActions().read(0);
-            if (action != EnumWrappers.EntityUseAction.ATTACK) return;
+            WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
+            if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
-            int entityId = packet.getIntegers().read(0);
+            int entityId = packet.getEntityId();
             Entity target = null;
             for (Entity e : player.getWorld().getEntities()) {
                 if (e.getEntityId() == entityId) {
@@ -215,9 +204,6 @@ public class PacketListener {
     }
 
     public void unregister() {
-        if (adapter != null) {
-            protocolManager.removePacketListener(adapter);
-            adapter = null;
-        }
+        PacketEvents.getAPI().getEventManager().unregisterAllListeners();
     }
 }
