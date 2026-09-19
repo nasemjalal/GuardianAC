@@ -11,6 +11,7 @@ import com.github.retrooper.packetevents.wrapper.play.client.*;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
+import com.nasem.guardianac.check.impl.AutoClickerCheck;
 import com.nasem.guardianac.check.impl.BlockReachCheck;
 import com.nasem.guardianac.check.impl.FastBreakCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
@@ -93,13 +94,11 @@ public class PacketListener {
 
             long now = System.currentTimeMillis();
 
-            // ⭐ Nuker packet-level
             Check nukerCheck = pluginInstance.getCheckManager().getCheck(CheckType.NUKER);
             if (nukerCheck instanceof NukerCheck && nukerCheck.isEnabled()) {
                 ((NukerCheck) nukerCheck).handlePacketDig(player, data, blockLoc);
             }
 
-            // FastBreak
             long minDelay = pluginInstance.getConfig().getLong("checks.fastbreak.min-delay", 80);
             long lastBreak = data.getLastBlockBreakTime();
 
@@ -110,7 +109,6 @@ public class PacketListener {
                 }
             }
 
-            // BlockReach
             double maxReach = pluginInstance.getConfig().getDouble("checks.blockreach.max-reach", 4.5);
             double reach = player.getEyeLocation().distance(blockLoc.clone().add(0.5, 0.5, 0.5));
             if (reach > maxReach) {
@@ -123,7 +121,6 @@ public class PacketListener {
             data.setLastBlockBreakTime(now);
             data.setLastBlockBreakLocation(blockLoc);
         } catch (Exception e) {
-            // ⭐ debug — إذا فيه خطأ، يظهر في الكونسول
             pluginInstance.getLogger().warning("BlockDig error: " + e.getMessage());
         }
     }
@@ -139,6 +136,12 @@ public class PacketListener {
         try {
             WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
             if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
+
+            // ⭐ AutoClicker + TriggerBot
+            Check autoClicker = pluginInstance.getCheckManager().getCheck(CheckType.AUTOCLICKER);
+            if (autoClicker instanceof AutoClickerCheck && autoClicker.isEnabled()) {
+                ((AutoClickerCheck) autoClicker).handleAttack(player, data);
+            }
 
             int entityId = packet.getEntityId();
             Entity target = null;
