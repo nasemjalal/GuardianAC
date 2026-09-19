@@ -5,6 +5,7 @@ import com.github.retrooper.packetevents.event.PacketListenerAbstract;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketReceiveEvent;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
 import com.github.retrooper.packetevents.protocol.player.DiggingAction;
 import com.github.retrooper.packetevents.wrapper.play.client.*;
 import com.nasem.guardianac.GuardianAC;
@@ -39,9 +40,9 @@ public class PacketListener {
                 PlayerData data = pluginInstance.getPlayerDataManager().get(player);
                 if (data == null) return;
 
-                PacketType.Play.Client type = event.getPacketType();
+                PacketTypeCommon type = event.getPacketType();
 
-                // ⭐ تتبع النظر (KillAura) — نقرأ القيم مباشرة
+                // ⭐ تتبع النظر (KillAura)
                 if (type == PacketType.Play.Client.PLAYER_ROTATION
                         || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
                     try {
