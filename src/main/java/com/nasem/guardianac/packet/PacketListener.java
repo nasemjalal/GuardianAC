@@ -74,14 +74,9 @@ public class PacketListener {
                     handleBlockDig(event, player, data);
                 }
 
-                // ⭐⭐⭐ وضع بلوك (FastPlace) — الطريقة الجديدة
+                // ⭐⭐⭐ وضع بلوك (FastPlace)
                 if (type == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
-                    handleBlockPlace(player, data, event);
-                }
-
-                // ⭐⭐⭐ استخدام آيتم على بلوك (1.19+) — الطريقة الأهم
-                if (type == PacketType.Play.Client.USE_ITEM_ON) {
-                    handleUseItemOn(player, data, event);
+                    handleBlockPlace(player, data);
                 }
 
                 // ⭐ عداد الباكتات (Timer)
@@ -96,9 +91,9 @@ public class PacketListener {
     }
 
     /**
-     * ⭐ FastPlace من PLAYER_BLOCK_PLACEMENT
+     * ⭐ FastPlace — PLAYER_BLOCK_PLACEMENT
      */
-    private void handleBlockPlace(Player player, PlayerData data, PacketReceiveEvent event) {
+    private void handleBlockPlace(Player player, PlayerData data) {
         try {
             long now = System.currentTimeMillis();
             long lastPlace = data.getLastBlockPlaceTime();
@@ -108,34 +103,6 @@ public class PacketListener {
             if (lastPlace == 0) return;
 
             long diff = now - lastPlace;
-            long minDelay = pluginInstance.getConfig()
-                    .getLong("checks.fastplace.min-delay", 80);
-
-            if (diff < minDelay && diff > 0) {
-                Check check = pluginInstance.getCheckManager().getCheck(CheckType.FASTPLACE);
-                if (check instanceof FastPlaceCheck && check.isEnabled()) {
-                    ((FastPlaceCheck) check).handlePacket(player, data, diff);
-                }
-            }
-        } catch (Exception ignored) {}
-    }
-
-    /**
-     * ⭐⭐⭐ FastPlace من USE_ITEM_ON (الطريقة الأهم في 1.19+)
-     */
-    private void handleUseItemOn(Player player, PlayerData data, PacketReceiveEvent event) {
-        try {
-            long now = System.currentTimeMillis();
-            long lastPlace = data.getLastBlockPlaceTime();
-
-            // ⭐⭐ نفس التتبع
-            long diff = now - lastPlace;
-
-            // ⭐ نحفظ الوقت
-            data.setLastBlockPlaceTime(now);
-
-            if (lastPlace == 0) return;
-
             long minDelay = pluginInstance.getConfig()
                     .getLong("checks.fastplace.min-delay", 80);
 
