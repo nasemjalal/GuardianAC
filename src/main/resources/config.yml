@@ -36,6 +36,11 @@ checks:
     decay-seconds: 6
     max-angle: 75.0
     min-attack-delay: 55
+    max-angle-difference: 45.0
+    rotation-sample-size: 20
+    min-suspicious-gcd: 45.0
+    min-target-switch-ms: 100
+    max-ms-since-swing: 300
     punishment: none
 
   autoclicker:

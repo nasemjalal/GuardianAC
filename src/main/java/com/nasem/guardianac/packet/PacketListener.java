@@ -11,7 +11,6 @@ import com.github.retrooper.packetevents.wrapper.play.client.*;
 import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
-import com.nasem.guardianac.check.impl.AutoClickerCheck;
 import com.nasem.guardianac.check.impl.BlockReachCheck;
 import com.nasem.guardianac.check.impl.FastBreakCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
@@ -42,6 +41,7 @@ public class PacketListener {
 
                 PacketTypeCommon type = event.getPacketType();
 
+                // ⭐⭐⭐ GCD Rotation
                 if (type == PacketType.Play.Client.PLAYER_ROTATION
                         || type == PacketType.Play.Client.PLAYER_POSITION_AND_ROTATION) {
                     try {
@@ -54,6 +54,12 @@ public class PacketListener {
                         data.setCurrentYaw(yaw);
                         data.setCurrentPitch(pitch);
                         data.setLastLookTime(System.currentTimeMillis());
+
+                        // ⭐ KillAura GCD
+                        Check killAura = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
+                        if (killAura instanceof KillAuraCheck && killAura.isEnabled()) {
+                            ((KillAuraCheck) killAura).handleRotation(player, data, yaw);
+                        }
                     } catch (Exception ignored) {}
                 }
 
@@ -64,8 +70,6 @@ public class PacketListener {
                 }
 
                 if (type == PacketType.Play.Client.INTERACT_ENTITY) {
-                    // ⭐ DEBUG
-                    pluginInstance.getLogger().info("[DEBUG Packet] INTERACT_ENTITY from " + player.getName());
                     data.setLastEntityAttackTime(System.currentTimeMillis());
                     handleUseEntity(event, player, data);
                 }
@@ -137,10 +141,6 @@ public class PacketListener {
     private void handleUseEntity(PacketReceiveEvent event, Player player, PlayerData data) {
         try {
             WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
-
-            // ⭐ DEBUG — نوع الإجراء
-            pluginInstance.getLogger().info("[DEBUG UseEntity] action=" + packet.getAction());
-
             if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
             int entityId = packet.getEntityId();
@@ -151,20 +151,13 @@ public class PacketListener {
                     break;
                 }
             }
-
-            // ⭐ DEBUG
-            pluginInstance.getLogger().info("[DEBUG UseEntity] entityId=" + entityId
-                    + " target=" + (target == null ? "NULL" : target.getType()));
-
             if (target == null) return;
 
             Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
             if (check instanceof KillAuraCheck && check.isEnabled()) {
                 ((KillAuraCheck) check).handlePacket(player, data, target);
             }
-        } catch (Exception e) {
-            pluginInstance.getLogger().warning("[DEBUG UseEntity Error] " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
     public void unregister() {

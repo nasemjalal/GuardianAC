@@ -3,6 +3,8 @@ package com.nasem.guardianac.data;
 import com.nasem.guardianac.check.CheckType;
 import org.bukkit.Location;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -29,9 +31,14 @@ public class PlayerData {
     private long clickWindowStart;
     private Location lastAttackLocation;
 
-    // ⭐ تتبع الكليكات (لـ TriggerBot)
+    // ⭐ تتبع الكليكات
     private final Queue<Long> clickIntervals = new LinkedList<>();
     private long lastEntityClickTime;
+
+    // ⭐⭐⭐ GCD Rotation Check
+    private final Deque<Double> rotationDeltas = new ArrayDeque<>();
+    private float lastYawGCD = 0;
+    private UUID lastTargetId;
 
     private long lastSwingTime;
     private long lastEntityAttackTime;
@@ -106,7 +113,7 @@ public class PlayerData {
         }
     }
 
-    // ⭐⭐⭐ تتبع الكليكات
+    // ⭐ تتبع الكليكات
     public void addClickInterval(long interval) {
         clickIntervals.add(interval);
         if (clickIntervals.size() > 20) {
@@ -118,22 +125,24 @@ public class PlayerData {
 
     public double getClickIntervalVariance() {
         if (clickIntervals.size() < 5) return -1;
-
         double sum = 0;
         for (long v : clickIntervals) sum += v;
         double mean = sum / clickIntervals.size();
-
         double variance = 0;
-        for (long v : clickIntervals) {
-            variance += Math.pow(v - mean, 2);
-        }
+        for (long v : clickIntervals) variance += Math.pow(v - mean, 2);
         variance /= clickIntervals.size();
-
         return Math.sqrt(variance);
     }
 
     public long getLastEntityClickTime() { return lastEntityClickTime; }
     public void setLastEntityClickTime(long time) { this.lastEntityClickTime = time; }
+
+    // ⭐⭐⭐ GCD Rotation
+    public Deque<Double> getRotationDeltas() { return rotationDeltas; }
+    public float getLastYawGCD() { return lastYawGCD; }
+    public void setLastYawGCD(float yaw) { this.lastYawGCD = yaw; }
+    public UUID getLastTargetId() { return lastTargetId; }
+    public void setLastTargetId(UUID id) { this.lastTargetId = id; }
 
     public Location getLastLocation() { return lastLocation; }
     public void setLastLocation(Location loc) { this.lastLocation = loc; }
