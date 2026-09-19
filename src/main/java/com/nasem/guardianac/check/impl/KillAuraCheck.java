@@ -8,20 +8,24 @@ import com.nasem.guardianac.util.MathUtil;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+
+import java.util.function.Predicate;
 
 public class KillAuraCheck extends Check {
 
-    private final double maxAngle;
     private final long minAttackDelay;
-    private final float maxYawChange = 90.0f;
 
     public KillAuraCheck(GuardianAC plugin) {
         super(plugin, CheckType.KILLAURA);
-        this.maxAngle = plugin.getConfig().getDouble("checks.killaura.max-angle", 75.0);
         this.minAttackDelay = plugin.getConfig().getLong("checks.killaura.min-attack-delay", 55);
     }
 
+    /**
+     * ⭐⭐⭐ USE_ENTITY — Ray Trace Detection
+     * يتحقق إذا خط النظر يمر من هيد بوكس الكيان
+     */
     public void handlePacket(Player attacker, PlayerData data, Entity target) {
         if (!enabled) return;
 
@@ -30,33 +34,40 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ نتجاهل إذا كسر بلوك حديثاً
+            // ⭐⭐⭐ Ray Trace — خط النظر
+            Vector eye = attacker.getEyeLocation().toVector();
+            Vector direction = attacker.getEyeLocation().getDirection().normalize();
+
+            // ⭐ مسافة الضرب
+            double maxRange = 5.0;
+
+            // ⭐ نبحث عن أول كيان يقطعه خط النظر
+            Predicate<Entity> filter = e -> e.getEntityId() == target.getEntityId();
+
+            RayTraceResult result = attacker.getWorld().rayTraceEntities(
+                    attacker.getEyeLocation(),
+                    direction,
+                    maxRange,
+                    0.1,
+                    filter
+            );
+
+            // ⭐⭐⭐ إذا خط النظر **ما مر** من الكيان = KillAura
+            if (result == null || result.getHitEntity() == null) {
+                flag(attacker, data, "no-look-at-hitbox");
+                return;
+            }
+
+            // ⭐ تأكد إن اللي ضربه = اللي باصص له
+            if (result.getHitEntity().getEntityId() != target.getEntityId()) {
+                flag(attacker, data, "wrong-target");
+                return;
+            }
+
+            // ⭐ فحص سرعة الضرب
             long now = System.currentTimeMillis();
-            long lastBreak = data.getLastBlockBreakTime();
-            if (lastBreak > 0 && (now - lastBreak) < 2000) {
-                return;
-            }
-
-            float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
-            if (yawDiff > 180) yawDiff = 360 - yawDiff;
-
-            if (yawDiff > maxYawChange) {
-                flag(attacker, data, "silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
-                return;
-            }
-
-            Vector look = attacker.getEyeLocation().getDirection().normalize();
-            Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
-                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
-
-            double angle = MathUtil.angle(look, toTarget);
-
-            if (angle > maxAngle) {
-                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "°");
-                return;
-            }
-
             long last = data.getLastAttackTime();
+
             if (last > 0) {
                 long diff = now - last;
                 if (diff < minAttackDelay && diff > 0) {
@@ -69,6 +80,9 @@ public class KillAuraCheck extends Check {
         } catch (Exception ignored) {}
     }
 
+    /**
+     * ⭐ Bukkit fallback
+     */
     public void handle(Player attacker, Entity victim, PlayerData data) {
         if (!enabled) return;
 
@@ -77,55 +91,30 @@ public class KillAuraCheck extends Check {
             if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
             if (attacker.isInsideVehicle()) return;
 
-            // ⭐ نتجاهل إذا كسر بلوك حديثاً
-            long now = System.currentTimeMillis();
-            long lastBreak = data.getLastBlockBreakTime();
-            if (lastBreak > 0 && (now - lastBreak) < 2000) {
-                return;
-            }
+            Vector eye = attacker.getEyeLocation().toVector();
+            Vector direction = attacker.getEyeLocation().getDirection().normalize();
 
-            float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
-            if (yawDiff > 180) yawDiff = 360 - yawDiff;
+            Predicate<Entity> filter = e -> e.getEntityId() == victim.getEntityId();
 
-            if (yawDiff > maxYawChange) {
-                flag(attacker, data, "silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
-                return;
-            }
+            RayTraceResult result = attacker.getWorld().rayTraceEntities(
+                    attacker.getEyeLocation(),
+                    direction,
+                    5.0,
+                    0.1,
+                    filter
+            );
 
-            Vector look = attacker.getEyeLocation().getDirection().normalize();
-            Vector toTarget = victim.getLocation().add(0, victim.getHeight() / 2.0, 0)
-                    .toVector().subtract(attacker.getEyeLocation().toVector()).normalize();
-
-            double angle = MathUtil.angle(look, toTarget);
-
-            if (angle > maxAngle) {
-                flag(attacker, data, "angle=" + MathUtil.round(angle, 1) + "°");
+            if (result == null || result.getHitEntity() == null) {
+                flag(attacker, data, "bukkit no-look-at-hitbox");
             }
         } catch (Exception ignored) {}
     }
 
+    /**
+     * ⭐ Swing — نتجاهله تماماً (لأن ما نعرف الكيان)
+     */
     public void handleSwing(Player attacker, PlayerData data) {
-        if (!enabled) return;
-
-        try {
-            GameMode gm = attacker.getGameMode();
-            if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return;
-            if (attacker.isInsideVehicle()) return;
-
-            // ⭐⭐⭐ نتجاهل إذا كسر بلوك في آخر 2 ثانية
-            long now = System.currentTimeMillis();
-            long lastBreak = data.getLastBlockBreakTime();
-
-            if (lastBreak > 0 && (now - lastBreak) < 2000) {
-                return;
-            }
-
-            float yawDiff = Math.abs(data.getCurrentYaw() - data.getPreviousYaw());
-            if (yawDiff > 180) yawDiff = 360 - yawDiff;
-
-            if (yawDiff > maxYawChange) {
-                flag(attacker, data, "swing silent-aim yaw=" + MathUtil.round(yawDiff, 1) + "°");
-            }
-        } catch (Exception ignored) {}
+        // ⭐ Swing بدون USE_ENTITY = مو KillAura (Nuker/FastBreak)
+        // ما نفحص شي هنا
     }
 }
