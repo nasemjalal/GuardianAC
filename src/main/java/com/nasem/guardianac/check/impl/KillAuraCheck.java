@@ -9,8 +9,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 
-import java.util.UUID;
-
 public class KillAuraCheck extends Check {
 
     public KillAuraCheck(GuardianAC plugin) {
@@ -25,9 +23,43 @@ public class KillAuraCheck extends Check {
     }
 
     /**
-     * ⭐⭐⭐ 1. GCD Rotation — الأقوى
-     * إيد الإنسان ترتجف → الفروق عشوائية
-     * الهاك → الفروق مضاعفات رقم ثابت
+     * ⭐ Angle Check — مباشر (يشتغل فوراً بدون انتظار)
+     */
+    public void handlePacket(Player attacker, PlayerData data, Entity target) {
+        if (!enabled) return;
+        if (shouldSkip(attacker)) return;
+
+        // ⭐ DEBUG
+        plugin.getLogger().info("[KillAura] " + attacker.getName()
+                + " attacked " + target.getType()
+                + " | yaw=" + Math.round(attacker.getEyeLocation().getYaw())
+                + " pitch=" + Math.round(attacker.getEyeLocation().getPitch()));
+
+        // ⭐ Angle
+        Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
+                .toVector().subtract(attacker.getEyeLocation().toVector());
+
+        double requiredYaw = Math.toDegrees(Math.atan2(-toTarget.getX(), toTarget.getZ()));
+        double requiredPitch = Math.toDegrees(Math.atan2(-toTarget.getY(),
+                Math.sqrt(toTarget.getX() * toTarget.getX() + toTarget.getZ() * toTarget.getZ())));
+
+        double yawDiff = angleDifference(attacker.getEyeLocation().getYaw(), (float) requiredYaw);
+        double pitchDiff = Math.abs(attacker.getEyeLocation().getPitch() - requiredPitch);
+
+        double maxDiff = plugin.getConfig().getDouble("checks.killaura.max-angle-difference", 45.0);
+
+        // ⭐ DEBUG
+        plugin.getLogger().info("[KillAura] yawDiff=" + Math.round(yawDiff)
+                + " pitchDiff=" + Math.round(pitchDiff)
+                + " max=" + maxDiff);
+
+        if (yawDiff > maxDiff || pitchDiff > maxDiff) {
+            flag(attacker, data, String.format("yawDiff=%.1f pitchDiff=%.1f", yawDiff, pitchDiff));
+        }
+    }
+
+    /**
+     * ⭐ GCD Rotation
      */
     public void handleRotation(Player player, PlayerData data, float newYaw) {
         if (!enabled) return;
@@ -67,56 +99,7 @@ public class KillAuraCheck extends Check {
         }
     }
 
-    /**
-     * ⭐⭐ 2. Angle Check
-     */
-    public void handlePacket(Player attacker, PlayerData data, Entity target) {
-        if (!enabled) return;
-        if (shouldSkip(attacker)) return;
-
-        // ⭐ Angle
-        Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
-                .toVector().subtract(attacker.getEyeLocation().toVector());
-
-        double requiredYaw = Math.toDegrees(Math.atan2(-toTarget.getX(), toTarget.getZ()));
-        double requiredPitch = Math.toDegrees(Math.atan2(-toTarget.getY(),
-                Math.sqrt(toTarget.getX() * toTarget.getX() + toTarget.getZ() * toTarget.getZ())));
-
-        double yawDiff = angleDifference(attacker.getEyeLocation().getYaw(), (float) requiredYaw);
-        double pitchDiff = Math.abs(attacker.getEyeLocation().getPitch() - requiredPitch);
-
-        double maxDiff = plugin.getConfig().getDouble("checks.killaura.max-angle-difference", 45.0);
-
-        if (plugin.getConfig().getBoolean("checks.killaura.debug", false)) {
-            plugin.getLogger().info("[GuardianAC-Debug] Angle check: yawDiff="
-                    + String.format("%.1f", yawDiff) + " pitchDiff=" + String.format("%.1f", pitchDiff)
-                    + " maxDiff=" + maxDiff);
-        }
-        if (yawDiff > maxDiff || pitchDiff > maxDiff) {
-            flag(attacker, data, String.format("yawDiff=%.1f pitchDiff=%.1f", yawDiff, pitchDiff));
-        }
-
-        // ⭐ Multi-Target
-        long now = System.currentTimeMillis();
-        int minSwitchMs = plugin.getConfig().getInt("checks.killaura.min-target-switch-ms", 100);
-
-        UUID lastTargetId = data.getLastTargetId();
-        long lastAttack = data.getLastAttackTime();
-
-        if (lastTargetId != null && !lastTargetId.equals(target.getUniqueId())
-                && lastAttack != 0 && (now - lastAttack) < minSwitchMs) {
-            flag(attacker, data, "multiTarget switch<" + minSwitchMs + "ms");
-        }
-
-        data.setLastTargetId(target.getUniqueId());
-        data.setLastAttackTime(now);
-    }
-
-    /**
-     * ⭐ 3. Swing Check
-     */
     public void handleSwing(Player attacker, PlayerData data) {
-        // نسجل وقت Swing
         data.setLastSwingTime(System.currentTimeMillis());
     }
 
