@@ -86,6 +86,12 @@ public class KillAuraCheck extends Check {
         double pitchDiff = Math.abs(attacker.getEyeLocation().getPitch() - requiredPitch);
 
         double maxDiff = plugin.getConfig().getDouble("checks.killaura.max-angle-difference", 45.0);
+
+        if (plugin.getConfig().getBoolean("checks.killaura.debug", false)) {
+            plugin.getLogger().info("[GuardianAC-Debug] Angle check: yawDiff="
+                    + String.format("%.1f", yawDiff) + " pitchDiff=" + String.format("%.1f", pitchDiff)
+                    + " maxDiff=" + maxDiff);
+        }
         if (yawDiff > maxDiff || pitchDiff > maxDiff) {
             flag(attacker, data, String.format("yawDiff=%.1f pitchDiff=%.1f", yawDiff, pitchDiff));
         }

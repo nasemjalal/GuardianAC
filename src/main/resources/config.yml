@@ -41,6 +41,7 @@ checks:
     min-suspicious-gcd: 45.0
     min-target-switch-ms: 100
     max-ms-since-swing: 300
+    debug: true
     punishment: none
 
   autoclicker:

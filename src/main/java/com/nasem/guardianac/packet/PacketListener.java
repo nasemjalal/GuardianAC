@@ -60,7 +60,10 @@ public class PacketListener {
                         if (killAura instanceof KillAuraCheck && killAura.isEnabled()) {
                             ((KillAuraCheck) killAura).handleRotation(player, data, yaw);
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        pluginInstance.getLogger().warning("[GuardianAC] Rotation packet error: "
+                                + e.getClass().getSimpleName() + " - " + e.getMessage());
+                    }
                 }
 
                 if (type == PacketType.Play.Client.ANIMATION) {
@@ -139,8 +142,15 @@ public class PacketListener {
     }
 
     private void handleUseEntity(PacketReceiveEvent event, Player player, PlayerData data) {
+        boolean debug = pluginInstance.getConfig().getBoolean("checks.killaura.debug", false);
         try {
             WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
+
+            if (debug) {
+                pluginInstance.getLogger().info("[GuardianAC-Debug] INTERACT_ENTITY من "
+                        + player.getName() + " action=" + packet.getAction());
+            }
+
             if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
 
             int entityId = packet.getEntityId();
@@ -151,13 +161,28 @@ public class PacketListener {
                     break;
                 }
             }
+
+            if (debug) {
+                pluginInstance.getLogger().info("[GuardianAC-Debug] entityId=" + entityId
+                        + " target=" + (target == null ? "NOT FOUND" : target.getType()));
+            }
+
             if (target == null) return;
 
             Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
+            if (debug) {
+                pluginInstance.getLogger().info("[GuardianAC-Debug] KillAura check="
+                        + (check == null ? "NULL" : check.getClass().getSimpleName())
+                        + " enabled=" + (check != null && check.isEnabled()));
+            }
+
             if (check instanceof KillAuraCheck && check.isEnabled()) {
                 ((KillAuraCheck) check).handlePacket(player, data, target);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            pluginInstance.getLogger().warning("[GuardianAC] UseEntity packet error: "
+                    + e.getClass().getSimpleName() + " - " + e.getMessage());
+        }
     }
 
     public void unregister() {
