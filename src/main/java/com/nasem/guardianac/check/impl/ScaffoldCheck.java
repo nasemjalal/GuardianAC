@@ -4,10 +4,13 @@ import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
-import com.nasem.guardianac.util.MathUtil;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 public class ScaffoldCheck extends Check {
@@ -18,28 +21,38 @@ public class ScaffoldCheck extends Check {
 
     public void handle(Player player, BlockPlaceEvent event, PlayerData data) {
         if (!enabled) return;
+        if (player.getGameMode() == GameMode.SPECTATOR) return;
 
-        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE) return;
+        boolean debug = plugin.getConfig().getBoolean("checks.scaffold.debug", false);
 
-        // Check if placing block BELOW player (typical scaffold)
-        Location blockLoc = event.getBlock().getLocation();
-        Location playerLoc = player.getLocation();
+        Block placed = event.getBlock();
+        Block against = event.getBlockAgainst();
+        Location feet = player.getLocation();
 
-        // Block must be below player (y less than player y - 1)
-        if (blockLoc.getY() >= playerLoc.getY() - 1) return;
+        // بس البلوكات اللي تنحط تحت مستوى الرجلين (سكافولد)
+        if (placed.getY() >= feet.getBlockY()) {
+            if (debug) plugin.getLogger().info("[Scaffold] skip " + player.getName() + " (block not below feet)");
+            return;
+        }
 
-        // Where is the player looking?
-        Vector look = player.getEyeLocation().getDirection().normalize();
+        // هل النظرة فعلاً على البلوك اللي انحط عليه؟
+        double expand = plugin.getConfig().getDouble("checks.scaffold.look-expand", 0.3);
+        BoundingBox box = BoundingBox.of(against).expand(expand);
+        Vector origin = player.getEyeLocation().toVector();
+        Vector dir = player.getEyeLocation().getDirection();
 
-        // Direction to the placed block
-        Vector toBlock = blockLoc.clone().add(0.5, 0.5, 0.5).toVector()
-                .subtract(player.getEyeLocation().toVector()).normalize();
+        RayTraceResult result = box.rayTrace(origin, dir, 7.0);
+        boolean looking = result != null;
 
-        double angle = MathUtil.angle(look, toBlock);
+        if (debug) {
+            plugin.getLogger().info("[Scaffold] " + player.getName()
+                    + " placed " + placed.getType()
+                    + " looking=" + looking
+                    + " => " + (looking ? "ok" : "FLAG"));
+        }
 
-        // If player placed a block below but is NOT looking at it → scaffold
-        if (angle > 75.0) {
-            flag(player, data, "angle=" + MathUtil.round(angle, 1) + "°");
+        if (!looking) {
+            flag(player, data, "not-looking-at-block");
         }
     }
 }

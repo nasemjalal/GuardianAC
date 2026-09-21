@@ -137,6 +137,6 @@ public class CombatListener implements Listener {
         if (check == null || !check.isEnabled()) return;
         try {
             ((com.nasem.guardianac.check.impl.ScaffoldCheck) check).handle(player, event, data);
-        } catch (Exception ignored) {}
+        } catch (Exception ex) { plugin.getLogger().warning("[Scaffold] error: " + ex); }
     }
 }
