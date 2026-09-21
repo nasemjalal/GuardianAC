@@ -152,6 +152,8 @@ public class PacketListener {
             final int entityId = packet.getEntityId();
             final float yaw = data.getCurrentYaw();
             final float pitch = data.getCurrentPitch();
+            final float prevYaw = data.getPreviousYaw();
+            final long lookTime = data.getLastLookTime();
             final long time = System.currentTimeMillis();
 
             Bukkit.getScheduler().runTask(pluginInstance, () -> {
@@ -169,7 +171,7 @@ public class PacketListener {
 
                     Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
                     if (check instanceof KillAuraCheck && check.isEnabled()) {
-                        ((KillAuraCheck) check).handlePacket(player, data, target, yaw, pitch, time);
+                        ((KillAuraCheck) check).handlePacket(player, data, target, yaw, pitch, prevYaw, lookTime, time);
                     }
                 } catch (Exception ex) {
                     pluginInstance.getLogger().warning("[KillAura] error: " + ex);
