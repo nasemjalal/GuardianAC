@@ -31,6 +31,7 @@ public class CheckManager {
         checks.add(new ReachCheck(plugin));
         checks.add(new KillAuraCheck(plugin));
         checks.add(new AutoClickerCheck(plugin));
+        checks.add(new TriggerBotCheck(plugin));
         checks.add(new CriticalsCheck(plugin));
         checks.add(new VelocityCheck(plugin));
         checks.add(new WallhackCheck(plugin));

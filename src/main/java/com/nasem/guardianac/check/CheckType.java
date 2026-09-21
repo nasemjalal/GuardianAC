@@ -7,6 +7,7 @@ public enum CheckType {
     REACH("Reach", "reach"),
     KILLAURA("KillAura", "killaura"),
     AUTOCLICKER("AutoClicker", "autoclicker"),
+    TRIGGERBOT("TriggerBot", "triggerbot"),
     NOFALL("NoFall", "nofall"),
     JESUS("Jesus", "jesus"),
     STEP("Step", "step"),

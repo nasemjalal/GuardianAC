@@ -40,6 +40,8 @@ public class PlayerData {
     private float lastYawGCD = 0;
     private UUID lastTargetId;
     private long lastTargetTime;
+    private long attackWindowStart;
+    private int attackCount;
 
     private long lastSwingTime;
     private long lastEntityAttackTime;
@@ -145,6 +147,10 @@ public class PlayerData {
     public UUID getLastTargetId() { return lastTargetId; }
     public long getLastTargetTime() { return lastTargetTime; }
     public void setLastTargetTime(long t) { this.lastTargetTime = t; }
+    public long getAttackWindowStart() { return attackWindowStart; }
+    public void setAttackWindowStart(long t) { this.attackWindowStart = t; }
+    public int getAttackCount() { return attackCount; }
+    public void setAttackCount(int c) { this.attackCount = c; }
     public void setLastTargetId(UUID id) { this.lastTargetId = id; }
 
     public Location getLastLocation() { return lastLocation; }

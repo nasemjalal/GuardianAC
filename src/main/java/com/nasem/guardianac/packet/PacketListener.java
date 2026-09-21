@@ -15,6 +15,7 @@ import com.nasem.guardianac.check.impl.BlockReachCheck;
 import com.nasem.guardianac.check.impl.FastBreakCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
 import com.nasem.guardianac.check.impl.NukerCheck;
+import com.nasem.guardianac.check.impl.TriggerBotCheck;
 import com.nasem.guardianac.data.PlayerData;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -159,6 +160,11 @@ public class PacketListener {
             Bukkit.getScheduler().runTask(pluginInstance, () -> {
                 try {
                     if (!player.isOnline()) return;
+
+                    Check tb = pluginInstance.getCheckManager().getCheck(CheckType.TRIGGERBOT);
+                    if (tb instanceof TriggerBotCheck && tb.isEnabled()) {
+                        ((TriggerBotCheck) tb).handleAttack(player, data, time);
+                    }
 
                     Entity target = null;
                     for (Entity ent : player.getNearbyEntities(10, 10, 10)) {
