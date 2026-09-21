@@ -4,10 +4,13 @@ import com.nasem.guardianac.GuardianAC;
 import com.nasem.guardianac.check.Check;
 import com.nasem.guardianac.check.CheckType;
 import com.nasem.guardianac.data.PlayerData;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+
+import java.util.UUID;
 
 public class KillAuraCheck extends Check {
 
@@ -15,27 +18,42 @@ public class KillAuraCheck extends Check {
         super(plugin, CheckType.KILLAURA);
     }
 
+    private boolean debug() {
+        return plugin.getConfig().getBoolean("checks.killaura.debug", false);
+    }
+
     private boolean shouldSkip(Player player) {
         GameMode gm = player.getGameMode();
         if (gm == GameMode.CREATIVE || gm == GameMode.SPECTATOR) return true;
-        if (player.isInsideVehicle()) return true;
-        return false;
+        return player.isInsideVehicle();
     }
 
-    /**
-     * ⭐ Angle Check — مباشر (يشتغل فوراً بدون انتظار)
-     */
-    public void handlePacket(Player attacker, PlayerData data, Entity target) {
+    public void handlePacket(Player attacker, PlayerData data, Entity target,
+                             float yaw, float pitch, long time) {
         if (!enabled) return;
-        if (shouldSkip(attacker)) return;
 
-        // ⭐ DEBUG
-        plugin.getLogger().info("[KillAura] " + attacker.getName()
-                + " attacked " + target.getType()
-                + " | yaw=" + Math.round(attacker.getEyeLocation().getYaw())
-                + " pitch=" + Math.round(attacker.getEyeLocation().getPitch()));
+        if (shouldSkip(attacker)) {
+            if (debug()) {
+                plugin.getLogger().info("[KillAura] skip " + attacker.getName()
+                        + " (creative/spectator/vehicle)");
+            }
+            return;
+        }
 
-        // ⭐ Angle
+        // 1) Target switch
+        long minSwitch = plugin.getConfig().getLong("checks.killaura.min-target-switch-ms", 100);
+        UUID lastId = data.getLastTargetId();
+        long sinceLast = time - data.getLastTargetTime();
+        boolean switched = lastId != null && !lastId.equals(target.getUniqueId());
+        data.setLastTargetId(target.getUniqueId());
+        data.setLastTargetTime(time);
+        if (switched && sinceLast >= 0 && sinceLast < minSwitch) {
+            flag(attacker, data, "targetSwitch=" + sinceLast + "ms");
+        }
+
+        // 2) Angle
+        if (yaw == 0f && pitch == 0f) return;
+
         Vector toTarget = target.getLocation().add(0, target.getHeight() / 2.0, 0)
                 .toVector().subtract(attacker.getEyeLocation().toVector());
 
@@ -43,24 +61,25 @@ public class KillAuraCheck extends Check {
         double requiredPitch = Math.toDegrees(Math.atan2(-toTarget.getY(),
                 Math.sqrt(toTarget.getX() * toTarget.getX() + toTarget.getZ() * toTarget.getZ())));
 
-        double yawDiff = angleDifference(attacker.getEyeLocation().getYaw(), (float) requiredYaw);
-        double pitchDiff = Math.abs(attacker.getEyeLocation().getPitch() - requiredPitch);
+        double yawDiff = angleDifference(yaw, (float) requiredYaw);
+        double pitchDiff = Math.abs(pitch - requiredPitch);
 
         double maxDiff = plugin.getConfig().getDouble("checks.killaura.max-angle-difference", 45.0);
 
-        // ⭐ DEBUG
-        plugin.getLogger().info("[KillAura] yawDiff=" + Math.round(yawDiff)
-                + " pitchDiff=" + Math.round(pitchDiff)
-                + " max=" + maxDiff);
+        if (debug()) {
+            plugin.getLogger().info("[KillAura] " + attacker.getName()
+                    + " -> " + target.getType()
+                    + " yawDiff=" + Math.round(yawDiff)
+                    + " pitchDiff=" + Math.round(pitchDiff)
+                    + " max=" + maxDiff
+                    + " switch=" + sinceLast + "ms");
+        }
 
         if (yawDiff > maxDiff || pitchDiff > maxDiff) {
             flag(attacker, data, String.format("yawDiff=%.1f pitchDiff=%.1f", yawDiff, pitchDiff));
         }
     }
 
-    /**
-     * ⭐ GCD Rotation
-     */
     public void handleRotation(Player player, PlayerData data, float newYaw) {
         if (!enabled) return;
         if (shouldSkip(player)) return;
@@ -94,17 +113,16 @@ public class KillAuraCheck extends Check {
                 .getDouble("checks.killaura.min-suspicious-gcd", 45.0);
 
         if (gcdScaled > gcdThreshold) {
-            flag(player, data, "rotationGCD=" + gcdScaled);
+            final String info = "rotationGCD=" + gcdScaled;
             data.getRotationDeltas().clear();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) flag(player, data, info);
+            });
         }
     }
 
     public void handleSwing(Player attacker, PlayerData data) {
         data.setLastSwingTime(System.currentTimeMillis());
-    }
-
-    public void handle(Player attacker, Entity victim, PlayerData data) {
-        handlePacket(attacker, data, victim);
     }
 
     private long gcd(long a, long b) {

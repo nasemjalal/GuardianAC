@@ -16,6 +16,7 @@ import com.nasem.guardianac.check.impl.FastBreakCheck;
 import com.nasem.guardianac.check.impl.KillAuraCheck;
 import com.nasem.guardianac.check.impl.NukerCheck;
 import com.nasem.guardianac.data.PlayerData;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -70,8 +71,6 @@ public class PacketListener {
 
                 // ⭐⭐⭐ INTERACT_ENTITY — الأهم
                 if (type == PacketType.Play.Client.INTERACT_ENTITY) {
-                    pluginInstance.getLogger().info("[PACKET] INTERACT_ENTITY from "
-                            + player.getName());
                     data.setLastEntityAttackTime(System.currentTimeMillis());
                     handleUseEntity(event, player, data);
                 }
@@ -140,41 +139,44 @@ public class PacketListener {
         }
     }
 
-    private void handleUseEntity(PacketReceiveEvent event, Player player, PlayerData data) {
-        try {
-            WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
-
-            pluginInstance.getLogger().info("[PACKET] UseEntity action=" + packet.getAction());
-
-            if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) {
-                pluginInstance.getLogger().info("[PACKET] Not ATTACK — skip");
-                return;
-            }
-
-            int entityId = packet.getEntityId();
-            Entity target = null;
-            for (Entity e : player.getWorld().getEntities()) {
-                if (e.getEntityId() == entityId) {
-                    target = e;
-                    break;
-                }
-            }
-
-            pluginInstance.getLogger().info("[PACKET] entityId=" + entityId
-                    + " target=" + (target == null ? "NULL" : target.getType().name()));
-
-            if (target == null) return;
-
-            Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
-            if (check instanceof KillAuraCheck && check.isEnabled()) {
-                ((KillAuraCheck) check).handlePacket(player, data, target);
-            }
-        } catch (Exception e) {
-            pluginInstance.getLogger().warning("[PACKET] UseEntity error: " + e.getMessage());
-        }
-    }
 
     public void unregister() {
         PacketEvents.getAPI().getEventManager().unregisterAllListeners();
+    }
+
+    private void handleUseEntity(PacketReceiveEvent event, Player player, PlayerData data) {
+        try {
+            WrapperPlayClientInteractEntity packet = new WrapperPlayClientInteractEntity(event);
+            if (packet.getAction() != WrapperPlayClientInteractEntity.InteractAction.ATTACK) return;
+
+            final int entityId = packet.getEntityId();
+            final float yaw = data.getCurrentYaw();
+            final float pitch = data.getCurrentPitch();
+            final long time = System.currentTimeMillis();
+
+            Bukkit.getScheduler().runTask(pluginInstance, () -> {
+                try {
+                    if (!player.isOnline()) return;
+
+                    Entity target = null;
+                    for (Entity ent : player.getNearbyEntities(10, 10, 10)) {
+                        if (ent.getEntityId() == entityId) {
+                            target = ent;
+                            break;
+                        }
+                    }
+                    if (target == null) return;
+
+                    Check check = pluginInstance.getCheckManager().getCheck(CheckType.KILLAURA);
+                    if (check instanceof KillAuraCheck && check.isEnabled()) {
+                        ((KillAuraCheck) check).handlePacket(player, data, target, yaw, pitch, time);
+                    }
+                } catch (Exception ex) {
+                    pluginInstance.getLogger().warning("[KillAura] error: " + ex);
+                }
+            });
+        } catch (Exception ex) {
+            pluginInstance.getLogger().warning("[PACKET] UseEntity error: " + ex);
+        }
     }
 }

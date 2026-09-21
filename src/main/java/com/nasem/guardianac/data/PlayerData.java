@@ -39,6 +39,7 @@ public class PlayerData {
     private final Deque<Double> rotationDeltas = new ArrayDeque<>();
     private float lastYawGCD = 0;
     private UUID lastTargetId;
+    private long lastTargetTime;
 
     private long lastSwingTime;
     private long lastEntityAttackTime;
@@ -142,6 +143,8 @@ public class PlayerData {
     public float getLastYawGCD() { return lastYawGCD; }
     public void setLastYawGCD(float yaw) { this.lastYawGCD = yaw; }
     public UUID getLastTargetId() { return lastTargetId; }
+    public long getLastTargetTime() { return lastTargetTime; }
+    public void setLastTargetTime(long t) { this.lastTargetTime = t; }
     public void setLastTargetId(UUID id) { this.lastTargetId = id; }
 
     public Location getLastLocation() { return lastLocation; }
