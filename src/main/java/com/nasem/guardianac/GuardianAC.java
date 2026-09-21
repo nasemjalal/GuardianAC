@@ -7,6 +7,7 @@ import com.nasem.guardianac.check.CheckManager;
 import com.nasem.guardianac.command.GuardianCommand;
 import com.nasem.guardianac.data.PlayerDataManager;
 import com.nasem.guardianac.listener.CombatListener;
+import com.nasem.guardianac.listener.InteractListener;
 import com.nasem.guardianac.listener.ConnectionListener;
 import com.nasem.guardianac.listener.MovementListener;
 import com.nasem.guardianac.packet.PacketListener;
@@ -48,6 +49,7 @@ public class GuardianAC extends JavaPlugin {
 
         Bukkit.getPluginManager().registerEvents(new MovementListener(this), this);
         Bukkit.getPluginManager().registerEvents(new CombatListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new InteractListener(this), this);
         Bukkit.getPluginManager().registerEvents(new ConnectionListener(this), this);
 
         packetListener.register();
